@@ -30,7 +30,7 @@ void lapic_calibrate_timer() {
   lapic_write(LAPIC_TIMER_DIV, 0);
   lapic_write(LAPIC_TIMER_LVT, 0);
   lapic_write(LAPIC_TIMER_INITCNT, 0xFFFFFFFF);
-  pit_sleep(1); // 10 ms
+  pit_sleep(1); // 1 ms
   lapic_write(LAPIC_TIMER_LVT, LAPIC_TIMER_DISABLE);
   u32 ticks = 0xFFFFFFFF - lapic_read(LAPIC_TIMER_CURCNT);
   apic_ticks = ticks;

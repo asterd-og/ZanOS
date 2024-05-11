@@ -60,7 +60,7 @@ pagemap* vmm_new_pm() {
 }
 
 void vmm_switch_pm(pagemap* pm) {
-  __asm__ volatile ("mov %0, %%cr3" :: "r"((u64)PHYSICAL(pm)) : "memory");
+  __asm__ volatile ("mov %0, %%cr3" : : "r"((u64)PHYSICAL(pm)) : "memory");
 }
 
 void vmm_map(pagemap* pm, uptr vaddr, uptr paddr, u64 flags) {
@@ -89,5 +89,5 @@ void vmm_unmap(pagemap* pm, uptr vaddr) {
   uptr* pml1 = vmm_get_next_lvl(pml2, pml2_entry, 0, false);
   if (pml1 == NULL) return;
   pml1[pml1_entry] = 0;
-  __asm__ volatile ("invlpg (%0)" :: "b"(vaddr) : "memory");
+  __asm__ volatile ("invlpg (%0)" : : "b"(vaddr) : "memory");
 }

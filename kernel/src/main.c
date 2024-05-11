@@ -18,6 +18,7 @@
 #include <dev/lapic.h>
 #include <dev/ioapic.h>
 #include <dev/pit.h>
+#include <dev/block/ata.h>
 #include <sched/sched.h>
 
 // See specification for further info.
@@ -53,6 +54,14 @@ void hcf() {
   for (;;) __asm__ volatile ("hlt");
 }
 
+void task() {
+  printf("Hello from task 1!\nGoing to sleep for 1 second (1000 ms)\n");
+  sleep(1000);
+  printf("Just woke up.\n");
+  for (;;) {
+  }
+}
+
 // The following will be our kernel's entry point.
 // If renaming _start() to something else, make sure to change the
 // linker script accordingly.
@@ -70,7 +79,10 @@ void _start(void) {
 
   hhdm_offset = hhdm_request.response->offset;
   framebuffer = framebuffer_request.response->framebuffers[0];
-    
+
+  u32 defaultbg = 0x1b1c1b;
+  u32 defaultfg = 0xffffff;
+
   ft_ctx = flanterm_fb_init(
     NULL,
     NULL,
@@ -81,11 +93,11 @@ void _start(void) {
     framebuffer->blue_mask_size, framebuffer->blue_mask_shift,
     NULL,
     NULL, NULL,
-    NULL, NULL,
+    &defaultbg, &defaultfg,
     NULL, NULL,
     NULL, 0, 0, 1,
     0, 0,
-    0
+    15
   );
 
   gdt_init();
@@ -105,6 +117,10 @@ void _start(void) {
   lapic_calibrate_timer();
   sched_init();
   dprintf("_start(): Initialised scheduler.\n");
+  ata_init();
+  printf("\033[38;2;0;255;255mZanOS\033[0m Booted successfully with %ld cores.\n", smp_cpu_count);
+
+  sched_new_task(task, 1);
 
   irq_register(0x32 - 32, sched_schedule);
   lapic_send_all_int(bsp_lapic_id, 0x32); // Jumpstart the scheduler

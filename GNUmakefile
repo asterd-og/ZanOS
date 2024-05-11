@@ -58,7 +58,7 @@ run-normal: $(IMAGE_NAME).iso
 
 .PHONY: run-kvm
 run-kvm: $(IMAGE_NAME).iso
-	$(QEMU) $(QARGS) -debugcon stdio -m 2G -cdrom $(IMAGE_NAME).iso -boot d -enable-kvm -smp 2
+	$(QEMU) $(QARGS) -debugcon stdio -m 2G -cdrom $(IMAGE_NAME).iso -boot d -enable-kvm -smp 2 -drive file=fat.img,format=raw
 
 .PHONY: run-kvm-rtl8139
 run-kvm-rtl8139: $(IMAGE_NAME).iso
