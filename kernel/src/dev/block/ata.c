@@ -5,9 +5,13 @@ u16 ata_base = 0;
 u8 ata_type = 0;
 char ata_name[40];
 
-u8 ata_poll() {
+void ata_400ns() {
   for (u8 i = 0; i < 4; i++)
     inb(ata_base + 7); // 400ns delay
+}
+
+u8 ata_poll() {
+  ata_400ns();
   
   u8 status = 0;
   for (;;) {
@@ -44,6 +48,8 @@ u8 ata_identify(u16 ata, u8 type) {
     ata_name[i + 1] = buf[54 + i];
   }
   
+  ata_400ns();
+  
   return ATA_OKAY;
 }
 
@@ -59,15 +65,16 @@ u8 ata_read(u32 lba, u8* buffer, u32 sector_count) {
   u16 val = 0;
   u32 i = 0;
 
-  if (ata_poll() != ATA_OKAY)
-    return ATA_DISK_ERR;
-
   for (; i < sector_count * 512; i += 2) {
+    if (ata_poll() != ATA_OKAY)
+      return ATA_DISK_ERR;
     val = inw(ata_base);
     buffer[i] = val & 0x00ff;
     if (i + 1 < sector_count * 512)
       buffer[i + 1] = (val >> 8) & 0x00ff;
   }
+
+  ata_400ns();
 
   return ATA_OKAY;
 }
@@ -84,15 +91,16 @@ u8 ata_write(u32 lba, u8* buffer, u32 sector_count) {
   u16 val = 0;
   u32 i = 0;
 
-  if (ata_poll() != ATA_OKAY)
-    return ATA_DISK_ERR;
-
   for (; i < sector_count * 512; i += 2) {
+    if (ata_poll() != ATA_OKAY)
+      return ATA_DISK_ERR;
     val = buffer[i];
     if (i + 1 < sector_count * 512)
       val |= ((u16)buffer[i + 1] << 8);
     outw(ata_base, val);
   }
+  
+  ata_400ns();
   
   return ATA_OKAY;
 }

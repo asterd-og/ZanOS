@@ -5,6 +5,11 @@
     "string_view": "c",
     "initializer_list": "c",
     "utility": "c",
-    "ata.h": "c"
+    "ata.h": "c",
+    "ext2.h": "c",
+    "kmalloc.h": "c",
+    "smp.h": "c",
+    "cpu.h": "c",
+    "types.h": "c"
   }
 }
