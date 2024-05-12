@@ -2,6 +2,16 @@
 
 #include <types.h>
 
+#define EXT_FIFO 0x1000
+#define EXT_CHAR_DEV 0x2000
+#define EXT_DIRECTORY 0x4000
+#define EXT_BLOCK_DEV 0x6000
+#define EXT_FILE 0x8000
+#define EXT_SYM_LINK 0xA000
+#define EXT_UNIX_SOCKET 0xC000
+
+#define EXT_MAX_CACHE 0x1024
+
 typedef struct {
   u32 inodes_count;
   u32 blocks_count;
@@ -53,7 +63,7 @@ typedef struct {
 typedef struct {
   u16 type_perms;
   u16 user_id;
-  u32 size_low;
+  u32 size;
   u32 last_access_time;
   u32 creation_time;
   u32 mod_time;
@@ -68,8 +78,8 @@ typedef struct {
   u32 doubly_block_ptr;
   u32 triply_block_ptr;
   u32 gen_number;
-  u32 attrib_block;
-  u32 size_high;
+  u32 file_acl;
+  u32 dir_acl;
   u32 frag_block_addr;
   u8 os_spec2[12];
 } ext2_inode;
@@ -103,4 +113,11 @@ typedef struct {
   u32 inode_size;
 } ext2_fs;
 
+typedef struct {
+  u32 block;
+  u8 data[1024];
+} ext2_cache;
+
 u8 ext2_init();
+
+void ext2_list_dir(ext2_fs* fs, ext2_inode* in);

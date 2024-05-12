@@ -10,6 +10,7 @@
     "kmalloc.h": "c",
     "smp.h": "c",
     "cpu.h": "c",
-    "types.h": "c"
+    "types.h": "c",
+    "printf.h": "c"
   }
 }
