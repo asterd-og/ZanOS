@@ -122,6 +122,11 @@ void _start(void) {
   printf("\033[38;2;0;255;255mZanOS\033[0m Booted successfully with %ld cores.\n", smp_cpu_count);
   ext2_init();
 
+  u8 buf[1024];
+  ext2_read("/home/documents/doc.txt", buf, 0, 0);
+
+  printf("%s\n", buf);
+
   // sched_new_task(task, 1);
 
   irq_register(0x32 - 32, sched_schedule);

@@ -105,19 +105,47 @@ typedef struct {
 } ext2_bgd;
 
 typedef struct {
+  u32 block;
+  u8* data;
+} ext2_cache;
+
+typedef struct {
+  ext2_dirent* dirent;
+  u32 size;
+  char* name;
+} ext2_file;
+
+typedef struct {
+  ext2_dirent* dirent;
+  ext2_dirent* parent;
+  ext2_dirent* entries;
+  u32 size;
+  char* name;
+} ext2_dir;
+
+typedef struct {
   ext2_sb* sb;
   ext2_bgd* bgd_table;
+  ext2_cache* block_cache;
+  ext2_dir* root_dir;
+  ext2_inode* root_ino;
   u32 block_size;
   u32 bgd_count;
   u32 bgd_block;
   u32 inode_size;
+  u32 block_cache_idx;
 } ext2_fs;
 
-typedef struct {
-  u32 block;
-  u8 data[1024];
-} ext2_cache;
+extern ext2_fs* root_fs;
 
 u8 ext2_init();
 
+void ext2_read_inode(ext2_fs* fs, u32 inode, ext2_inode* in);
+u32 ext2_get_inode(ext2_fs* fs, ext2_inode* in, char* name);
+void ext2_read_inode_blocks(ext2_fs* fs, ext2_inode* in, u8* buf);
+
+void ext2_read_file(ext2_fs* fs, ext2_inode* in, char* name, u8* buf);
+
 void ext2_list_dir(ext2_fs* fs, ext2_inode* in);
+
+int ext2_read(char* path, u8* buffer, u32 offset, u32 count);
