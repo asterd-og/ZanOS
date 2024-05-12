@@ -33,7 +33,6 @@ void ext2_read_block(ext2_fs* fs, u32 block, void* buf) {
     }
     return;
   }
-  dprintf("Using cache!\n");
   memcpy(buf, block_cache[cache_num].data, 1024);
 }
 
