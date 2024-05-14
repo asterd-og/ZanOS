@@ -11,4 +11,4 @@
 - VFS Driver (WIP)
 
 # Screenshots
-![ext2_vfs](https://github.com/asterd-og/ZanOS/blob/master/images/ext2_vfs.png?raw=true)
+![ext2_vfs](https://github.com/asterd-og/ZanOS/blob/main/images/ext2_vfs.png?raw=true)
