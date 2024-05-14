@@ -82,7 +82,7 @@ void _start(void) {
   hhdm_offset = hhdm_request.response->offset;
   framebuffer = framebuffer_request.response->framebuffers[0];
 
-  u32 defaultbg = 0x1b1c1b;
+  u32 defaultbg = 0x000000;
   u32 defaultfg = 0xffffff;
 
   ft_ctx = flanterm_fb_init(
@@ -99,7 +99,7 @@ void _start(void) {
     NULL, NULL,
     NULL, 0, 0, 1,
     0, 0,
-    15
+    0
   );
 
   gdt_init();
