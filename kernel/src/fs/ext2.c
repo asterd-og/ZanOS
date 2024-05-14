@@ -49,7 +49,6 @@ void ext2_read_inode(ext2_fs* fs, u32 inode, ext2_inode* in) {
 }
 
 u32 ext2_get_inode(ext2_fs* fs, ext2_inode* in, char* name) {
-  ext2_dirent* dir = (ext2_dirent*)kmalloc((in->sector_count / 2) * sizeof(ext2_dirent));
   // we divide by 2 because sector count is each 512 bytes, we read 1024 bytes per block
   u8* buf = (u8*)kmalloc((in->sector_count / 2) * fs->block_size);
   u8* _buf = buf;
@@ -60,7 +59,7 @@ u32 ext2_get_inode(ext2_fs* fs, ext2_inode* in, char* name) {
     ext2_read_block(fs, block, buf + (i * fs->block_size));
   }
 
-  dir = (ext2_dirent*)buf;
+  ext2_dirent* dir = (ext2_dirent*)buf;
   while (dir->inode != 0) {
     dir = (ext2_dirent*)buf;
     buf += dir->total_size;

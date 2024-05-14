@@ -124,24 +124,6 @@ void _start(void) {
   ext2_init();
   vfs_init();
 
-  int i = 0;
-  vfs_dirent* node = 0;
-
-  while ((node = vfs_readdir(vfs_root, i)) != NULL) {
-    printf("Found node: ");
-    vfs_node* file = vfs_finddir(vfs_root, node->name);
-    if (file->type == VFS_DIRECTORY)
-      printf("\033[38;2;0;255;0m%s\033[0m\n", file->name);
-    else {
-      printf("%s\n", file->name);
-      printf(" contents: ");
-      char buf[1024];
-      vfs_read(file, 0, 0, buf);
-      printf("%s\n", buf);
-    }
-    i++;
-  }
-
   sched_new_task(task, 1);
 
   irq_register(0x32 - 32, sched_schedule);
