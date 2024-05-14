@@ -1,6 +1,7 @@
 #pragma once
 
 #include <types.h>
+#include <fs/vfs.h>
 
 #define EXT_FIFO 0x1000
 #define EXT_CHAR_DEV 0x2000
@@ -110,24 +111,9 @@ typedef struct {
 } ext2_cache;
 
 typedef struct {
-  ext2_dirent* dirent;
-  u32 size;
-  char* name;
-} ext2_file;
-
-typedef struct {
-  ext2_dirent* dirent;
-  ext2_dirent* parent;
-  ext2_dirent* entries;
-  u32 size;
-  char* name;
-} ext2_dir;
-
-typedef struct {
   ext2_sb* sb;
   ext2_bgd* bgd_table;
   ext2_cache* block_cache;
-  ext2_dir* root_dir;
   ext2_inode* root_ino;
   u32 block_size;
   u32 bgd_count;
@@ -144,8 +130,10 @@ void ext2_read_inode(ext2_fs* fs, u32 inode, ext2_inode* in);
 u32 ext2_get_inode(ext2_fs* fs, ext2_inode* in, char* name);
 void ext2_read_inode_blocks(ext2_fs* fs, ext2_inode* in, u8* buf);
 
-void ext2_read_file(ext2_fs* fs, ext2_inode* in, char* name, u8* buf);
+u32 ext2_read_file(ext2_fs* fs, ext2_inode* in, char* name, u8* buf);
 
 void ext2_list_dir(ext2_fs* fs, ext2_inode* in);
 
-int ext2_read(char* path, u8* buffer, u32 offset, u32 count);
+u32 ext2_read(struct vfs_node* vnode, u32 offset, u32 count, u8* buffer);
+vfs_dirent* ext2_readdir(struct vfs_node* vnode, u32 index);
+vfs_node* ext2_finddir(struct vfs_node* vnode, char* path);

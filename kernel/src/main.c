@@ -21,6 +21,7 @@
 #include <dev/block/ata.h>
 #include <sched/sched.h>
 #include <fs/ext2.h>
+#include <fs/vfs.h>
 
 // See specification for further info.
 
@@ -105,7 +106,7 @@ void _start(void) {
   idt_init();
   pmm_init();
   vmm_init();
-  kheap_init(PAGE_SIZE * 65536); // 256 mb
+  kheap_init();
   if (!acpi_init()) {
     printf("acpi_init(): Couldn't find ACPI.\n");
     hcf();
@@ -121,13 +122,27 @@ void _start(void) {
   ata_init();
   printf("\033[38;2;0;255;255mZanOS\033[0m Booted successfully with %ld cores.\n", smp_cpu_count);
   ext2_init();
+  vfs_init();
 
-  u8 buf[1024];
-  ext2_read("/home/documents/doc.txt", buf, 0, 0);
+  int i = 0;
+  vfs_dirent* node = 0;
 
-  printf("%s\n", buf);
+  while ((node = vfs_readdir(vfs_root, i)) != NULL) {
+    printf("Found node: ");
+    vfs_node* file = vfs_finddir(vfs_root, node->name);
+    if (file->type == VFS_DIRECTORY)
+      printf("\033[38;2;0;255;0m%s\033[0m\n", file->name);
+    else {
+      printf("%s\n", file->name);
+      printf(" contents: ");
+      char buf[1024];
+      vfs_read(file, 0, 0, buf);
+      printf("%s\n", buf);
+    }
+    i++;
+  }
 
-  // sched_new_task(task, 1);
+  sched_new_task(task, 1);
 
   irq_register(0x32 - 32, sched_schedule);
   lapic_send_all_int(bsp_lapic_id, 0x32); // Jumpstart the scheduler
