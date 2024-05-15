@@ -17,20 +17,26 @@ void vfs_init() {
   vfs_root->type = VFS_DIRECTORY;
 }
 
-u32 vfs_read(struct vfs_node* vnode, u32 offset, u32 count, u8* buffer) {
-  if (vnode->read && vnode->type == VFS_FILE)
-    return vnode->read(vnode, offset, count, buffer);
-  return 1;
+i32 vfs_write(vfs_node* vnode, u8* buffer, u32 count) {
+  if (vnode->write)
+    return vnode->write(vnode, buffer, count);
+  return -1;
 }
 
-vfs_dirent* vfs_readdir(struct vfs_node* vnode, u32 index) {
+i32 vfs_read(vfs_node* vnode, u8* buffer, u32 count) {
+  if (vnode->read)
+    return vnode->read(vnode, buffer, count);
+  return -1;
+}
+
+vfs_dirent* vfs_readdir(vfs_node* vnode, u32 index) {
   if (vnode->readdir && vnode->type == VFS_DIRECTORY)
     return vnode->readdir(vnode, index);
   return NULL;
 }
 
-vfs_node* vfs_finddir(struct vfs_node* vnode, char* path) {
-  if (vnode->readdir && vnode->type == VFS_DIRECTORY)
+vfs_node* vfs_finddir(vfs_node* vnode, char* path) {
+  if (vnode->finddir && vnode->type == VFS_DIRECTORY)
     return vnode->finddir(vnode, path);
   return NULL;
 }

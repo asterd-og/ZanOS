@@ -18,7 +18,9 @@
 #include <dev/lapic.h>
 #include <dev/ioapic.h>
 #include <dev/pit.h>
+#include <dev/dev.h>
 #include <dev/block/ata.h>
+#include <dev/char/keyboard.h>
 #include <sched/sched.h>
 #include <fs/ext2.h>
 #include <fs/vfs.h>
@@ -56,11 +58,20 @@ void hcf() {
   for (;;) __asm__ volatile ("hlt");
 }
 
+vfs_node* kb_node;
+
 void task() {
-  printf("Hello from task 1!\nGoing to sleep for 1 second (1000 ms)\n");
-  sleep(1000);
-  printf("Just woke up.\n");
+  printf("Hello from task 1!");
+  keyboard_event ev;
+  i32 n = 0;
   for (;;) {
+    n = vfs_read(kb_node, &ev, sizeof ev);
+    if (n == -1)
+      continue;
+    if (n != sizeof ev)
+      break;
+    if (ev.type == 1 && ev.value >= 0 && ev.value <= 2)
+      printf("%c", ev.code);
   }
 }
 
@@ -123,6 +134,30 @@ void _start(void) {
   printf("\033[38;2;0;255;255mZanOS\033[0m Booted successfully with %ld cores.\n", smp_cpu_count);
   ext2_init();
   vfs_init();
+  dev_init();
+  keyboard_init();
+
+  vfs_dirent* dirent;
+  int i = 0;
+  printf("Listing /:\n");
+  while ((dirent = vfs_readdir(vfs_root, i)) != NULL) {
+    vfs_node* node = vfs_finddir(vfs_root, dirent->name);
+    printf(" /%s%s\033[0m\n", (node->type == VFS_DIRECTORY ? "\033[38;2;0;50;255m" : ""), dirent->name);
+    kfree(dirent->name);
+    kfree(dirent);
+    kfree(node->name);
+    kfree(node);
+    i++;
+  }
+  i = 0;
+  printf("\nListing /%s/:\n", vfs_dev->name);
+  while ((dirent = vfs_readdir(vfs_dev, i)) != NULL) {
+    kb_node = vfs_finddir(vfs_dev, dirent->name);
+    printf(" /dev/%s\n", dirent->name);
+    kfree(dirent->name);
+    kfree(dirent);
+    i++;
+  }
 
   sched_new_task(task, 1);
 

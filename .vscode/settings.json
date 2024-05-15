@@ -11,6 +11,8 @@
     "smp.h": "c",
     "cpu.h": "c",
     "types.h": "c",
-    "printf.h": "c"
+    "printf.h": "c",
+    "vfs.h": "c",
+    "pit.h": "c"
   }
 }

@@ -26,7 +26,7 @@ override DEFAULT_LD := ld
 $(eval $(call DEFAULT_VAR,LD,$(DEFAULT_LD)))
 
 # User controllable C flags.
-override DEFAULT_CFLAGS := -g -O2 -pipe
+override DEFAULT_CFLAGS := -g -O1 -pipe
 $(eval $(call DEFAULT_VAR,CFLAGS,$(DEFAULT_CFLAGS)))
 
 # User controllable C preprocessor flags. We set none by default.

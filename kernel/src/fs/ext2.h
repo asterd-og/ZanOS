@@ -131,6 +131,6 @@ u32 ext2_get_inode(ext2_fs* fs, ext2_inode* in, char* name);
 void ext2_read_inode_blocks(ext2_fs* fs, ext2_inode* in, u8* buf);
 u32 ext2_read_file(ext2_fs* fs, ext2_inode* in, char* name, u8* buf);
 
-u32 ext2_read(struct vfs_node* vnode, u32 offset, u32 count, u8* buffer);
+i32 ext2_read(struct vfs_node* vnode, u8* buffer, u32 count);
 vfs_dirent* ext2_readdir(struct vfs_node* vnode, u32 index);
 vfs_node* ext2_finddir(struct vfs_node* vnode, char* path);

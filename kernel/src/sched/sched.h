@@ -22,6 +22,7 @@ typedef struct task_ctrl {
   u64 stack_base;
   u64 sleeping_time;
   u8 state;
+  void* fds[256];
 } task_ctrl;
 
 void sched_init();

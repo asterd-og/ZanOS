@@ -57,29 +57,45 @@ void pmm_init() {
   dprintf("pmm_init(): PMM Initialised at %lx with bitmap size of %ld.\n", (u64)pmm_bitmap, bitmap_size);
 }
 
-void* pmm_alloc(usize n) {
+u64 pmm_find_pages(usize n) {
   u64 pages = 0;
+  u64 first_page = pmm_last_page;
   while (pages < n) {
     if (pmm_last_page == pmm_total_pages) {
       dprintf("pmm_alloc(): Ran out of memory.\n");
       return NULL;
     }
-    if (bitmap_get(pmm_bitmap, pmm_last_page + pages) == 0)
+    if (bitmap_get(pmm_bitmap, pmm_last_page + pages) == 0) {
       pages++;
+      if (pages == n) {
+        for (u64 i = 0; i < pages; i++)
+          bitmap_set(pmm_bitmap, pmm_last_page + i);
+        pmm_last_page += pages;
+        return first_page; // Return the start of the pages
+      }
+    }
     else {
-      pmm_last_page++;
+      pmm_last_page += (pages == 0 ? 1 : pages);
+      first_page = pmm_last_page;
       pages = 0;
     }
   }
-  for (u64 i = 0; i < n; i++)
-    bitmap_set(pmm_bitmap, pmm_last_page + i);
-  pmm_last_page += pages;
-  return (void*)((pmm_last_page - n) * PAGE_SIZE); // Return the start of the pages
+  return 0;
+}
+
+void* pmm_alloc(usize n) {
+  u64 first = pmm_find_pages(n);
+  if (first == 0) {
+    pmm_last_page = 0;
+    first = pmm_find_pages(n);
+    if (first == 0)
+      return NULL;
+  }
+  return (void*)(first * PAGE_SIZE);
 }
 
 void pmm_free(void* ptr, usize n) {
   u64 idx = (u64)ptr / PAGE_SIZE;
   for (u64 i = 0; i < n; i++)
     bitmap_clear(pmm_bitmap, idx + i);
-  pmm_last_page = idx;
 }
