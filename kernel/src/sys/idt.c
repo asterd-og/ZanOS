@@ -1,5 +1,6 @@
 #include <sys/idt.h>
 #include <sys/smp.h>
+#include <sys/syscall.h>
 #include <dev/char/serial.h>
 #include <dev/lapic.h>
 #include <dev/ioapic.h>
@@ -85,6 +86,11 @@ void irq_unregister(u8 vec) {
 }
 
 void isr_handler(registers* r) {
+  if (r->int_no == 0x80) {
+    syscall_handler(r);
+    return;
+  }
+  
   if (r->int_no == 0xff)
     return; // Spurious interrupt
   

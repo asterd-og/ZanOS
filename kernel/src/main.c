@@ -59,19 +59,6 @@ void hcf() {
   for (;;) __asm__ volatile ("hlt");
 }
 
-void sigsegv_handler(int sig) {
-  printf("\033[38;2;255;0;0mSIGSEGV Catched. %d\033[0m\n", sig);
-}
-
-void task() {
-  printf("Hello from task 1!\n");
-  sig_signal(SIGSEGV, sigsegv_handler);
-  char* seg = 0xdeadbeef;
-  *seg = 'a';
-  for (;;) {
-  }
-}
-
 // The following will be our kernel's entry point.
 // If renaming _start() to something else, make sure to change the
 // linker script accordingly.
@@ -133,8 +120,6 @@ void _start(void) {
   vfs_init();
   dev_init();
   keyboard_init();
-
-  sched_new_task(task, 1);
 
   irq_register(0x32 - 32, sched_schedule);
   lapic_send_all_int(bsp_lapic_id, 0x32); // Jumpstart the scheduler

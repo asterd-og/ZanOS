@@ -1,7 +1,9 @@
 #include <sched/sched.h>
 #include <sys/smp.h>
 #include <lib/lock.h>
+#include <lib/elf.h>
 #include <dev/pit.h>
+#include <fs/vfs.h>
 
 u64 sched_glob_id = 0;
 atomic_lock sched_lock;
@@ -33,6 +35,48 @@ task_ctrl* sched_new_task(void* entry, u64 cpu) {
   task->ctx.rflags = 0x202;
 
   task->pm = vmm_new_pm();
+
+  task->id = sched_glob_id++;
+  task->cpu = cpu;
+  task->stack_base = (u64)stack;
+  task->sleeping_time = 0;
+  task->state = SCHED_RUNNING;
+
+  c->task_list[c->task_count++] = task;
+
+  unlock(&sched_lock);
+
+  return task;
+}
+
+task_ctrl* sched_new_elf(char* path, u64 cpu) {
+  lock(&sched_lock);
+  
+  cpu_info* c = get_cpu(cpu);
+
+  task_ctrl* task = (task_ctrl*)kmalloc(sizeof(task_ctrl));
+  memset(task, 0, sizeof(task_ctrl));
+
+  task->pm = vmm_new_pm();
+
+  vfs_node* node = vfs_finddir(vfs_root, path);
+  u8* img = (u8*)kmalloc(node->size);
+  dprintf("sched_new_elf(): Loading elf with %d bytes.\n", node->size);
+  vfs_read(node, img, node->size);
+  u64 entry = elf_load(img, task->pm);
+  if (entry == -1) {
+    dprintf("sched_new_elf(): Failed to load elf.\n");
+    kfree(img);
+    kfree(task);
+    return NULL;
+  }
+
+  char* stack = (char*)kmalloc(2 * PAGE_SIZE);
+  task->ctx.rsp = (u64)(stack + (2 * PAGE_SIZE));
+  task->ctx.rip = (u64)entry;
+  task->ctx.cs  = 0x28;
+  task->ctx.ss  = 0x30;
+  task->ctx.rflags = 0x202;
 
   task->id = sched_glob_id++;
   task->cpu = cpu;
