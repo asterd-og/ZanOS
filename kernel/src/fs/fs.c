@@ -35,7 +35,6 @@ vfs_dirent* ext2_readdir(struct vfs_node* vnode, u32 index) {
       vfs_dirent* dirent = (vfs_dirent*)kmalloc(sizeof(vfs_dirent));
       dirent->ino = dir->inode;
       dirent->name = (char*)kmalloc(dir->name_len);
-      dprintf("%d '%s'\n", dir->name_len, dir->name);
       memcpy(dirent->name, dir->name, dir->name_len);
       kfree(_buf);
 

@@ -61,7 +61,7 @@ void hcf() {
 vfs_node* kb_node;
 
 void task() {
-  printf("Hello from task 1!");
+  printf("Hello from task 1!\n");
   keyboard_event ev;
   i32 n = 0;
   for (;;) {
@@ -136,28 +136,6 @@ void _start(void) {
   vfs_init();
   dev_init();
   keyboard_init();
-
-  vfs_dirent* dirent;
-  int i = 0;
-  printf("Listing /:\n");
-  while ((dirent = vfs_readdir(vfs_root, i)) != NULL) {
-    vfs_node* node = vfs_finddir(vfs_root, dirent->name);
-    printf(" /%s%s\033[0m\n", (node->type == VFS_DIRECTORY ? "\033[38;2;0;50;255m" : ""), dirent->name);
-    kfree(dirent->name);
-    kfree(dirent);
-    kfree(node->name);
-    kfree(node);
-    i++;
-  }
-  i = 0;
-  printf("\nListing /%s/:\n", vfs_dev->name);
-  while ((dirent = vfs_readdir(vfs_dev, i)) != NULL) {
-    kb_node = vfs_finddir(vfs_dev, dirent->name);
-    printf(" /dev/%s\n", dirent->name);
-    kfree(dirent->name);
-    kfree(dirent);
-    i++;
-  }
 
   sched_new_task(task, 1);
 
