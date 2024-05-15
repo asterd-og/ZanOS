@@ -2,6 +2,7 @@
 #include <limine.h>
 #include <lib/libc.h>
 #include <dev/char/serial.h>
+#include <sys/smp.h>
 
 struct limine_kernel_address_request kernel_address_request = {
   .id = LIMINE_KERNEL_ADDRESS_REQUEST,
@@ -61,6 +62,7 @@ pagemap* vmm_new_pm() {
 
 void vmm_switch_pm(pagemap* pm) {
   __asm__ volatile ("mov %0, %%cr3" : : "r"((u64)PHYSICAL(pm)) : "memory");
+  this_cpu()->pm = pm;
 }
 
 void vmm_map(pagemap* pm, uptr vaddr, uptr paddr, u64 flags) {

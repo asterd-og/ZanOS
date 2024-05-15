@@ -5,12 +5,14 @@
 #include <dev/lapic.h>
 #include <dev/char/serial.h>
 #include <sched/sched.h>
+#include <mm/vmm.h>
 
 extern u32 bsp_lapic_id;
 extern u64 smp_cpu_count;
 
 typedef struct {
   u64 lapic_id;
+  pagemap* pm;
 
   u64 task_count;
   u64 task_idx;

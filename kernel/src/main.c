@@ -22,6 +22,7 @@
 #include <dev/block/ata.h>
 #include <dev/char/keyboard.h>
 #include <sched/sched.h>
+#include <sched/signal.h>
 #include <fs/ext2.h>
 #include <fs/vfs.h>
 
@@ -58,12 +59,15 @@ void hcf() {
   for (;;) __asm__ volatile ("hlt");
 }
 
-vfs_node* kb_node;
+void sigsegv_handler(int sig) {
+  printf("\033[38;2;255;0;0mSIGSEGV Catched. %d\033[0m\n", sig);
+}
 
 void task() {
   printf("Hello from task 1!\n");
-  sleep(2000);
-  printf("Slept for 2 seconds.\n");
+  sig_signal(SIGSEGV, sigsegv_handler);
+  char* seg = 0xdeadbeef;
+  *seg = 'a';
   for (;;) {
   }
 }

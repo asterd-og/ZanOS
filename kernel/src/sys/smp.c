@@ -26,6 +26,7 @@ void smp_init_cpu(struct limine_smp_info* smp_info) {
   cpu_info* c = (cpu_info*)kmalloc(sizeof(cpu_info));
   memset(c, 0, sizeof(cpu_info));
   c->lapic_id = smp_info->lapic_id;
+  c->pm = vmm_kernel_pm;
 
   smp_cpu_list[smp_info->lapic_id] = c;
 
@@ -49,6 +50,7 @@ void smp_init() {
 
   cpu_info* c = (cpu_info*)kmalloc(sizeof(cpu_info));
   memset(c, 0, sizeof(cpu_info));
+  c->pm = vmm_kernel_pm;
 
   smp_cpu_list[0] = c;
 

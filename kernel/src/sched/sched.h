@@ -14,6 +14,8 @@ enum {
   SCHED_DEAD
 };
 
+typedef void(*signal_handler)(int);
+
 typedef struct task_ctrl {
   registers ctx;
   pagemap* pm;
@@ -22,7 +24,7 @@ typedef struct task_ctrl {
   u64 stack_base;
   u64 sleeping_time;
   u8 state;
-  void* fds[256];
+  signal_handler sigs[32];
 } task_ctrl;
 
 void sched_init();
@@ -35,3 +37,4 @@ void sleep(u64 ms);
 
 void sched_block(task_ctrl* task, u8 reason);
 void sched_unblock(task_ctrl* task);
+void sched_kill(task_ctrl* task, u8 signal);

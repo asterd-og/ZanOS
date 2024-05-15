@@ -100,3 +100,10 @@ void sched_block(task_ctrl* task, u8 reason) {
 void sched_unblock(task_ctrl* task) {
   task->state = SCHED_RUNNING;
 }
+
+void sched_kill(task_ctrl* task, u8 signal) {
+  if (task->sigs[signal] != NULL) task->sigs[signal](signal);
+  task->state = SCHED_DEAD; // TODO: Remove it from the list
+  if (this_cpu()->task_current == task)
+    __asm__ volatile ("int $0x32");
+}

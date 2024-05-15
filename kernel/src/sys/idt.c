@@ -3,6 +3,8 @@
 #include <dev/char/serial.h>
 #include <dev/lapic.h>
 #include <dev/ioapic.h>
+#include <sched/sched.h>
+#include <sched/signal.h>
 
 __attribute__((aligned(0x10))) static idt_entry idt_entries[256];
 static idtr idt;
@@ -85,6 +87,14 @@ void irq_unregister(u8 vec) {
 void isr_handler(registers* r) {
   if (r->int_no == 0xff)
     return; // Spurious interrupt
+  
+  if (r->int_no == 14) {
+    // Page fault
+    if (this_cpu()->pm != vmm_kernel_pm) {
+      sig_raise(SIGSEGV);
+      return;
+    }
+  }
   
   __asm__ volatile ("cli");
   dprintf("isr_handler(): System fault! %s.\n", isr_errors[r->int_no]);

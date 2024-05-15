@@ -13,6 +13,7 @@
     "types.h": "c",
     "printf.h": "c",
     "vfs.h": "c",
-    "pit.h": "c"
+    "pit.h": "c",
+    "sched.h": "c"
   }
 }
