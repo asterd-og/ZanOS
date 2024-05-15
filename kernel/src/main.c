@@ -62,16 +62,9 @@ vfs_node* kb_node;
 
 void task() {
   printf("Hello from task 1!\n");
-  keyboard_event ev;
-  i32 n = 0;
+  sleep(2000);
+  printf("Slept for 2 seconds.\n");
   for (;;) {
-    n = vfs_read(kb_node, &ev, sizeof ev);
-    if (n == -1)
-      continue;
-    if (n != sizeof ev)
-      break;
-    if (ev.type == 1 && ev.value >= 0 && ev.value <= 2)
-      printf("%c", ev.code);
   }
 }
 
