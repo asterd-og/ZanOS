@@ -18,6 +18,7 @@
 #include <dev/lapic.h>
 #include <dev/ioapic.h>
 #include <dev/pit.h>
+#include <dev/tty.h>
 #include <dev/dev.h>
 #include <dev/block/ata.h>
 #include <dev/char/keyboard.h>
@@ -25,6 +26,7 @@
 #include <sched/signal.h>
 #include <fs/ext2.h>
 #include <fs/vfs.h>
+#include <fs/fs.h>
 
 // See specification for further info.
 
@@ -57,6 +59,16 @@ void putchar_(char c) {
 
 void hcf() {
   for (;;) __asm__ volatile ("hlt");
+}
+
+void sigsegv_handl(int signal) {
+  fprintf(STDERR, "Signal %d (segmentation fault) caught.\n", signal);
+}
+
+void t1() {
+  sig_signal(SIGSEGV, sigsegv_handl);
+  char* fault = (char*)0xdeadbeef;
+  *fault = 'a';
 }
 
 // The following will be our kernel's entry point.
@@ -102,6 +114,7 @@ void _start(void) {
   pmm_init();
   vmm_init();
   kheap_init();
+  dprintf("KHeap initialised.\n");
   if (!acpi_init()) {
     printf("acpi_init(): Couldn't find ACPI.\n");
     hcf();
@@ -120,6 +133,9 @@ void _start(void) {
   vfs_init();
   dev_init();
   keyboard_init();
+  tty_init();
+
+  sched_new_task(t1, 1);
 
   irq_register(0x32 - 32, sched_schedule);
   lapic_send_all_int(bsp_lapic_id, 0x32); // Jumpstart the scheduler

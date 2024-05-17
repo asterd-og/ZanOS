@@ -9,7 +9,7 @@ struct limine_kernel_address_request kernel_address_request = {
   .revision = 0
 };
 
-pagemap* vmm_kernel_pm;
+pagemap* vmm_kernel_pm = NULL;
 
 void vmm_init() {
   vmm_kernel_pm = (pagemap*)HIGHER_HALF(pmm_alloc(1));
@@ -36,7 +36,7 @@ void vmm_init() {
     vmm_map(vmm_kernel_pm, (uptr)HIGHER_HALF(gb4), gb4, PTE_PRESENT | PTE_WRITABLE);
   }
 
-  vmm_switch_pm(vmm_kernel_pm);
+  vmm_switch_pm_nocpu(vmm_kernel_pm);
   dprintf("vmm_init(): VMM Initialised. Kernel's page map located at %lx.\n", (u64)vmm_kernel_pm);
 }
 
@@ -58,6 +58,10 @@ pagemap* vmm_new_pm() {
   for (usize i = 256; i < 512; i++)
     pm[i] = vmm_kernel_pm[i];
   return pm;
+}
+
+void vmm_switch_pm_nocpu(pagemap* pm) {
+  __asm__ volatile ("mov %0, %%cr3" : : "r"((u64)PHYSICAL(pm)) : "memory");
 }
 
 void vmm_switch_pm(pagemap* pm) {
@@ -92,4 +96,24 @@ void vmm_unmap(pagemap* pm, uptr vaddr) {
   if (pml1 == NULL) return;
   pml1[pml1_entry] = 0;
   __asm__ volatile ("invlpg (%0)" : : "b"(vaddr) : "memory");
+}
+
+void vmm_map_range(pagemap* pm, uptr vaddr, uptr paddr, u64 pages, u64 flags) {
+  for (u64 i = 0; i < pages; i++)
+    vmm_map(pm, vaddr + (i * PAGE_SIZE), paddr + (i * PAGE_SIZE), flags);
+}
+
+void* vmm_alloc(u64 pages, u64 flags) {
+  void* pg = pmm_alloc(pages);
+  if (!pg) return NULL;
+  for (int p = 0; p < pages; p++)
+    vmm_map(this_cpu()->pm, (uptr)pg + (p * PAGE_SIZE), (uptr)pg + (p * PAGE_SIZE), flags);
+  return pg;
+}
+
+void vmm_free(void* ptr, u64 pages) {
+  if (!ptr) return;
+  pmm_free(ptr, pages);
+  for (int p = 0; p < pages; p++)
+    vmm_unmap(this_cpu()->pm, (uptr)ptr + (p * PAGE_SIZE));
 }

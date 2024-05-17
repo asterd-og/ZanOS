@@ -1,7 +1,7 @@
 #pragma once
 
 #include <types.h>
-#include <sys/idt.h>  
+#include <sys/idt.h>
 
 typedef struct {
   void* arg1;

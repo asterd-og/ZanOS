@@ -8,10 +8,9 @@ void kheap_init() {
 
 void* kmalloc(u64 size) {
   void* ptr = heap_alloc(kernel_heap, size);
-  if (ptr == NULL) return NULL;
-  return HIGHER_HALF(ptr);
+  return ptr;
 }
 
 void kfree(void* ptr) {
-  heap_free(kernel_heap, PHYSICAL(ptr));
+  heap_free(kernel_heap, ptr);
 }

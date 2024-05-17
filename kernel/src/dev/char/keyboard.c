@@ -63,7 +63,6 @@ void keyboard_handler(registers* regs) {
 }
 
 u32 keyboard_read(struct vfs_node* vnode, u8* buffer, u32 count) {
-  lock(&kb_lock);
   char c = keyboard_char;
   keyboard_event ev;
   ev.type = 1; // key
@@ -71,7 +70,6 @@ u32 keyboard_read(struct vfs_node* vnode, u8* buffer, u32 count) {
   ev.code = c;
   keyboard_char = 0;
   memcpy(buffer, &ev, sizeof(keyboard_event));
-  unlock(&kb_lock);
   return sizeof(keyboard_event);
 }
 

@@ -29,7 +29,12 @@ void vmm_init();
 
 pagemap* vmm_new_pm();
 
+void vmm_switch_pm_nocpu(pagemap* pm);
 void vmm_switch_pm(pagemap* pm);
 
 void vmm_map(pagemap* pm, uptr vaddr, uptr paddr, u64 flags);
 void vmm_unmap(pagemap* pm, uptr vaddr);
+void vmm_map_range(pagemap* pm, uptr vaddr, uptr paddr, u64 pages, u64 flags);
+
+void* vmm_alloc(u64 pages, u64 flags);
+void vmm_free(void* ptr, u64 pages);

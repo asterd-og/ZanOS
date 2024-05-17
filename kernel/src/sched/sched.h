@@ -5,6 +5,7 @@
 #include <mm/heap.h>
 #include <mm/kmalloc.h>
 #include <mm/vmm.h>
+#include <fs/fs.h>
 
 enum {
   SCHED_STARTING,
@@ -24,6 +25,10 @@ typedef struct task_ctrl {
   u64 stack_base;
   u64 sleeping_time;
   u8 state;
+  heap* heap_area;
+  vfs_node* current_dir;
+  file_descriptor fds[256];
+  u16 fd_idx;
   signal_handler sigs[32];
 } task_ctrl;
 

@@ -3,6 +3,7 @@
 #include <types.h>
 #include <mm/pmm.h>
 #include <mm/vmm.h>
+#include <lib/lock.h>
 
 #define HEAP_MAGIC 0xdeadbeef
 
@@ -15,6 +16,7 @@ typedef struct heap_block {
 } heap_block;
 
 typedef struct {
+  atomic_lock hl;
   heap_block* block_head;
 } heap;
 

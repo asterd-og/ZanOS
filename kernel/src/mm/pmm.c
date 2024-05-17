@@ -2,6 +2,7 @@
 #include <limine.h>
 #include <lib/bitmap.h>
 #include <lib/libc.h>
+#include <lib/lock.h>
 #include <dev/char/serial.h>
 
 u8* pmm_bitmap = NULL;
@@ -9,6 +10,7 @@ u64 pmm_free_pages = 0;
 u64 pmm_used_pages = 0;
 u64 pmm_total_pages = 0;
 u64 pmm_last_page = 0;
+atomic_lock pmm_lock;
 
 struct limine_memmap_request memmap_request = {
   .id = LIMINE_MEMMAP_REQUEST,
@@ -84,18 +86,25 @@ u64 pmm_find_pages(usize n) {
 }
 
 void* pmm_alloc(usize n) {
+  lock(&pmm_lock);
   u64 first = pmm_find_pages(n);
   if (first == 0) {
     pmm_last_page = 0;
     first = pmm_find_pages(n);
-    if (first == 0)
+    if (first == 0) {
+      dprintf("pmm_alloc(): Couldn't allocate %lu pages: Not enough memory.\n", n);
+      unlock(&pmm_lock);
       return NULL;
+    }
   }
+  unlock(&pmm_lock);
   return (void*)(first * PAGE_SIZE);
 }
 
 void pmm_free(void* ptr, usize n) {
+  lock(&pmm_lock);
   u64 idx = (u64)ptr / PAGE_SIZE;
   for (u64 i = 0; i < n; i++)
     bitmap_clear(pmm_bitmap, idx + i);
+  unlock(&pmm_lock);
 }

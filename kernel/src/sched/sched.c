@@ -3,6 +3,8 @@
 #include <lib/lock.h>
 #include <lib/elf.h>
 #include <dev/pit.h>
+#include <dev/dev.h>
+#include <dev/tty.h>
 #include <fs/vfs.h>
 
 u64 sched_glob_id = 0;
@@ -35,12 +37,17 @@ task_ctrl* sched_new_task(void* entry, u64 cpu) {
   task->ctx.rflags = 0x202;
 
   task->pm = vmm_new_pm();
+  task->heap_area = heap_create();
 
   task->id = sched_glob_id++;
   task->cpu = cpu;
   task->stack_base = (u64)stack;
   task->sleeping_time = 0;
   task->state = SCHED_RUNNING;
+
+  task->current_dir = vfs_root;
+  task->fds[1] = fd_open(tty_node); // stdout
+  task->fds[2] = fd_open(tty_node); // stderr
 
   c->task_list[c->task_count++] = task;
 
@@ -147,7 +154,4 @@ void sched_unblock(task_ctrl* task) {
 
 void sched_kill(task_ctrl* task, u8 signal) {
   if (task->sigs[signal] != NULL) task->sigs[signal](signal);
-  task->state = SCHED_DEAD; // TODO: Remove it from the list
-  if (this_cpu()->task_current == task)
-    __asm__ volatile ("int $0x32");
 }

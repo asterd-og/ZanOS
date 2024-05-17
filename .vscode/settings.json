@@ -14,6 +14,13 @@
     "printf.h": "c",
     "vfs.h": "c",
     "pit.h": "c",
-    "sched.h": "c"
+    "sched.h": "c",
+    "signal.h": "c",
+    "kernel.h": "c",
+    "libc.h": "c",
+    "ioapic.h": "c",
+    "fs.h": "c",
+    "heap.h": "c",
+    "malloc.h": "c"
   }
 }

@@ -59,11 +59,13 @@ u32 ext2_get_inode(ext2_fs* fs, ext2_inode* in, char* name) {
     ext2_read_block(fs, block, buf + (i * fs->block_size));
   }
 
+  int plen = strlen(name);
+
   ext2_dirent* dir = (ext2_dirent*)buf;
   while (dir->inode != 0) {
     dir = (ext2_dirent*)buf;
     buf += dir->total_size;
-    if (!memcmp(dir->name, name, dir->name_len)) {
+    if (!memcmp(dir->name, name, plen)) {
       kfree(_buf);
       return dir->inode;
     }
@@ -73,26 +75,12 @@ u32 ext2_get_inode(ext2_fs* fs, ext2_inode* in, char* name) {
 }
 
 void ext2_read_inode_blocks(ext2_fs* fs, ext2_inode* in, u8* buf) {
+  // TODO: Read singly, doubly and triply linked blocks
   for (int i = 0; i < 12; i++) {
     u32 block = in->direct_block_ptr[i];
     if (block == 0) break;
     ext2_read_block(fs, block, buf + (i * fs->block_size));
   }
-}
-
-u32 ext2_read_file(ext2_fs* fs, ext2_inode* in, char* name, u8* buf) {
-  u32 ino = ext2_get_inode(fs, in, name);
-  ext2_inode* inode = (ext2_inode*)kmalloc(fs->inode_size);
-  ext2_read_inode(fs, ino, inode);
-  if (!(inode->type_perms & EXT_FILE)) {
-    kfree(inode);
-    return 1;
-  }
-
-  ext2_read_inode_blocks(fs, inode, buf);
-  kfree(inode);
-  return 0;
-  // TODO: Read singly linked, doubly linked and triply linked
 }
 
 u8 ext2_init() {

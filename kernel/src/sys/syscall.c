@@ -1,11 +1,12 @@
 #include <sys/syscall.h>
 #include <sched/signal.h>
 #include <lib/libc.h>
+#include <kernel.h>
 
 void* syscall_table[] = {
   syscall_kill,
   syscall_signal,
-  syscall_raise
+  syscall_raise,
 };
 
 void syscall_handler(registers* r) {

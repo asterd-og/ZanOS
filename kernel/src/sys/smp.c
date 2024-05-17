@@ -18,7 +18,7 @@ struct limine_smp_request smp_request = {
 void smp_init_cpu(struct limine_smp_info* smp_info) {
   gdt_init();
   idt_reinit();
-  vmm_switch_pm(vmm_kernel_pm);
+  vmm_switch_pm_nocpu(vmm_kernel_pm);
 
   while (smp_cpu_started < smp_info->lapic_id - 1)
     __asm__ volatile ("pause");
@@ -30,6 +30,8 @@ void smp_init_cpu(struct limine_smp_info* smp_info) {
 
   smp_cpu_list[smp_info->lapic_id] = c;
 
+  vmm_switch_pm(vmm_kernel_pm);
+
   lapic_init();
   sched_init();
 
@@ -40,6 +42,8 @@ void smp_init_cpu(struct limine_smp_info* smp_info) {
     __asm__ volatile ("hlt");
   }
 }
+
+bool smp_started = false;
 
 void smp_init() {
   struct limine_smp_response* smp_response = smp_request.response;
@@ -53,6 +57,7 @@ void smp_init() {
   c->pm = vmm_kernel_pm;
 
   smp_cpu_list[0] = c;
+  vmm_switch_pm(vmm_kernel_pm);
 
   for (u64 i = 0; i < smp_cpu_count; i++)
     smp_response->cpus[i]->goto_address = smp_init_cpu;

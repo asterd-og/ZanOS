@@ -26,7 +26,8 @@ vfs_node* dev_finddir(vfs_node* vnode, char* path) {
 }
 
 void dev_add(vfs_node* vnode) {
-  devices[dev_index++] = vnode;
+  devices[dev_index] = vnode;
+  dev_index++;
 }
 
 void dev_init() {
