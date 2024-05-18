@@ -14,3 +14,7 @@ void* kmalloc(u64 size) {
 void kfree(void* ptr) {
   heap_free(kernel_heap, ptr);
 }
+
+void* krealloc(void* ptr, u64 size) {
+  heap_realloc(kernel_heap, ptr, size);
+}

@@ -4,11 +4,12 @@
 #include <sched/sched.h>
 #include <sys/smp.h>
 
-file_descriptor fd_open(vfs_node* vnode) {
+file_descriptor fd_open(vfs_node* vnode, u16 mode, u16 fd_num) {
   file_descriptor fd;
   fd.vnode = vnode;
-  fd.flags = 0;
+  fd.mode = mode;
   fd.offset = 0;
+  fd.fd_num = fd_num;
   return fd;
 }
 

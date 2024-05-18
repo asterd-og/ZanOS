@@ -4,10 +4,13 @@
 #include <sys/smp.h>
 
 void* malloc(u64 size) {
-  // TODO: Fix this
   return heap_alloc(this_cpu()->task_current->heap_area, size);
 }
 
 void free(void* ptr) {
   heap_free(this_cpu()->task_current->heap_area, ptr);
+}
+
+void* realloc(void* ptr, u64 size) {
+  return heap_realloc(this_cpu()->task_current->heap_area, ptr, size);
 }

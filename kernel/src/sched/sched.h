@@ -25,6 +25,7 @@ typedef struct task_ctrl {
   u64 stack_base;
   u64 sleeping_time;
   u8 state;
+  int exit_status;
   heap* heap_area;
   vfs_node* current_dir;
   file_descriptor fds[256];
@@ -43,4 +44,6 @@ void sleep(u64 ms);
 
 void sched_block(task_ctrl* task, u8 reason);
 void sched_unblock(task_ctrl* task);
-void sched_kill(task_ctrl* task, u8 signal);
+void sched_kill(task_ctrl* task);
+task_ctrl* sched_get_task(u64 id);
+void sched_exit(int status);

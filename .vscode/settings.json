@@ -21,6 +21,7 @@
     "ioapic.h": "c",
     "fs.h": "c",
     "heap.h": "c",
-    "malloc.h": "c"
+    "malloc.h": "c",
+    "syscall.h": "c"
   }
 }

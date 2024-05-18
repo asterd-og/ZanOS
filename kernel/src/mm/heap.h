@@ -24,3 +24,4 @@ heap* heap_create();
 
 void* heap_alloc(heap* h, u64 size);
 void heap_free(heap* h, void* ptr);
+void* heap_realloc(heap* h, void* ptr, u64 size);

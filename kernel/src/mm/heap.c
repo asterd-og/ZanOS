@@ -51,3 +51,17 @@ void heap_free(heap* h, void* ptr) {
   pmm_free(buf, pages);
   unlock(&h->hl);
 }
+
+void* heap_realloc(heap* h, void* ptr, u64 size) {
+  heap_block* block = (heap_block*)(ptr - sizeof(heap_block));
+  if (block->magic != HEAP_MAGIC) {
+    dprintf("heap_realloc(): Invalid magic at pointer %lx.\n", ptr);
+    return NULL;
+  }
+  void* new_ptr = heap_alloc(h, size);
+  if (!new_ptr)
+    return NULL;
+  memcpy(new_ptr, ptr, block->size);
+  heap_free(h, ptr);
+  return new_ptr;
+}

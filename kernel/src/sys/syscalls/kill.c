@@ -1,6 +1,13 @@
 #include <sys/syscall.h>
 #include <sched/sched.h>
+#include <sched/signal.h>
 
 u64 syscall_kill(syscall_args a) {
-  return 0; // TODO: Implement this
+  task_ctrl* task = sched_get_task((u64)a.arg1);
+  if (task == NULL)
+    return 1;
+  u8 signal = (u8)a.arg2;
+  sig_raise((signal ? signal : SIGKILL));
+  sched_kill(task);
+  return 0;
 }

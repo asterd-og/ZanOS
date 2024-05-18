@@ -4,9 +4,21 @@
 #include <kernel.h>
 
 void* syscall_table[] = {
-  syscall_kill,
-  syscall_signal,
-  syscall_raise,
+  syscall_exit,     // 0
+  syscall_kill,     // 1
+  syscall_signal,   // 2
+  syscall_raise,    // 3
+
+  syscall_sleep,    // 4
+
+  syscall_malloc,   // 5
+  syscall_free,     // 6
+  syscall_realloc,  // 7
+
+  syscall_fopen,    // 8
+  syscall_fread,    // 9
+  syscall_fwrite,   // 10
+  syscall_fclose,   // 11
 };
 
 void syscall_handler(registers* r) {

@@ -14,6 +14,18 @@ typedef struct {
 
 void syscall_handler(registers* r);
 
+u64 syscall_exit(syscall_args a);
 u64 syscall_kill(syscall_args a);
 u64 syscall_signal(syscall_args a);
 u64 syscall_raise(syscall_args a);
+
+u64 syscall_sleep(syscall_args a);
+
+u64 syscall_malloc(syscall_args a);
+u64 syscall_free(syscall_args a);
+u64 syscall_realloc(syscall_args a);
+
+u64 syscall_fopen(syscall_args a);
+u64 syscall_fwrite(syscall_args a);
+u64 syscall_fread(syscall_args a);
+u64 syscall_fclose(syscall_args a);

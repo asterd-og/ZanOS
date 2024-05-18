@@ -46,8 +46,9 @@ task_ctrl* sched_new_task(void* entry, u64 cpu) {
   task->state = SCHED_RUNNING;
 
   task->current_dir = vfs_root;
-  task->fds[1] = fd_open(tty_node); // stdout
-  task->fds[2] = fd_open(tty_node); // stderr
+  task->fds[1] = fd_open(tty_node, FS_READ | FS_WRITE, 1); // stdout
+  task->fds[2] = fd_open(tty_node, FS_READ | FS_WRITE, 2); // stderr
+  task->fd_idx = 3;
 
   c->task_list[c->task_count++] = task;
 
@@ -66,14 +67,13 @@ task_ctrl* sched_new_elf(char* path, u64 cpu) {
 
   task->pm = vmm_new_pm();
 
-  vfs_node* node = vfs_finddir(vfs_root, path);
+  vfs_node* node = vfs_open(vfs_root, path);
   u8* img = (u8*)kmalloc(node->size);
   dprintf("sched_new_elf(): Loading elf with %d bytes.\n", node->size);
   vfs_read(node, img, node->size);
   u64 entry = elf_load(img, task->pm);
   if (entry == -1) {
     dprintf("sched_new_elf(): Failed to load elf.\n");
-    kfree(img);
     kfree(task);
     return NULL;
   }
@@ -152,6 +152,25 @@ void sched_unblock(task_ctrl* task) {
   task->state = SCHED_RUNNING;
 }
 
-void sched_kill(task_ctrl* task, u8 signal) {
-  if (task->sigs[signal] != NULL) task->sigs[signal](signal);
+void sched_kill(task_ctrl* task) {
+  if (task->state == SCHED_DEAD) return;
+  task->state = SCHED_DEAD;
+  if (this_cpu()->task_current == task)
+    __asm__ volatile ("int $0x32");
+}
+
+task_ctrl* sched_get_task(u64 tid) {
+  cpu_info* c;
+  for (u64 id = 0; id < smp_cpu_count; id++) {
+    c = get_cpu(id);
+    for (u64 t = 0; t < c->task_count; t++)
+      if (c->task_list[t]->id == tid)
+        return c->task_list[t];
+  }
+  return NULL;
+}
+
+void sched_exit(int status) {
+  this_cpu()->task_current->exit_status = status;
+  sched_kill(this_cpu()->task_current);
 }

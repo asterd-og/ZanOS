@@ -22,6 +22,7 @@
 #include <dev/dev.h>
 #include <dev/block/ata.h>
 #include <dev/char/keyboard.h>
+#include <dev/video/fb.h>
 #include <sched/sched.h>
 #include <sched/signal.h>
 #include <fs/ext2.h>
@@ -52,6 +53,15 @@ struct limine_hhdm_request hhdm_request = {
 
 u64 hhdm_offset = 0;
 
+struct limine_module_request module_request = {
+  .id = LIMINE_MODULE_REQUEST,
+  .revision = 0
+};
+
+void* get_mod_addr(int pos) {
+  return module_request.response->modules[pos]->address;
+}
+
 void putchar_(char c) {
   char str[1] = {c};
   flanterm_write(ft_ctx, str, 1);
@@ -61,14 +71,35 @@ void hcf() {
   for (;;) __asm__ volatile ("hlt");
 }
 
-void sigsegv_handl(int signal) {
-  fprintf(STDERR, "Signal %d (segmentation fault) caught.\n", signal);
-}
+void* syscall(uint64_t no, ...) {
+  void* args[6];
 
-void t1() {
-  sig_signal(SIGSEGV, sigsegv_handl);
-  char* fault = (char*)0xdeadbeef;
-  *fault = 'a';
+  va_list va;
+  va_start(va, no);
+
+  for (int i = 0; i < 6; i++) {
+    void* arg = va_arg(va, void*);
+    if (arg == NULL) args[i] = 0;
+    else args[i] = arg;
+  }
+
+  __asm__ volatile (
+    "movq %0, %%rax;"
+    "movq %1, %%rdi;"
+    "movq %2, %%rsi;"
+    "movq %3, %%rdx;"
+    "movq %4, %%r10;"
+    "movq %5, %%r8;"
+    "movq %6, %%r9;"
+    "int $0x80;"
+    :
+    : "r"((uint64_t)no), "r"((uint64_t)args[0]), "r"((uint64_t)args[1]), "r"((uint64_t)args[2]), "r"((uint64_t)args[3]), "r"((uint64_t)args[4]), "r"((uint64_t)args[5])
+    : "rax", "rdi", "rsi", "rdx", "r10", "r8"
+  );
+  va_end(va);
+  void* res;
+  __asm__ volatile("": "=a"(res) : : "memory");
+  return res;
 }
 
 // The following will be our kernel's entry point.
@@ -134,8 +165,9 @@ void _start(void) {
   dev_init();
   keyboard_init();
   tty_init();
+  fb_init();
 
-  sched_new_task(t1, 1);
+  sched_new_elf("/bin/shell", 1);
 
   irq_register(0x32 - 32, sched_schedule);
   lapic_send_all_int(bsp_lapic_id, 0x32); // Jumpstart the scheduler
