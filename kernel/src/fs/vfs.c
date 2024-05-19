@@ -85,6 +85,6 @@ void vfs_destroy(vfs_node* vnode) {
   if (!(vnode->perms & VFS_DESTROY))
     return;
   
-  free(vnode->name);
-  free(vnode);
+  kfree(vnode->name);
+  kfree(vnode);
 }

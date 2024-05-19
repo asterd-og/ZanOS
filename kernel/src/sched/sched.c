@@ -57,7 +57,21 @@ task_ctrl* sched_new_task(void* entry, u64 cpu) {
   return task;
 }
 
-task_ctrl* sched_new_elf(char* path, u64 cpu) {
+char** sched_create_argv(int argc, ...) {
+  va_list va;
+  va_start(va, argc);
+  char** argv = (char**)kmalloc((argc + 1) * sizeof(char*));
+  for (int i = 0; i < argc; i++) {
+    char* arg = (char*)va_arg(va, char*);
+    int arg_len = strlen(arg) + 1;
+    argv[i + 1] = (char*)kmalloc(arg_len);
+    memcpy(argv[i + 1], arg, arg_len);
+  }
+  va_end(va);
+  return argv;
+}
+
+task_ctrl* sched_new_elf(char* path, u64 cpu, int argc, char** argv) {
   lock(&sched_lock);
 
   cpu_info* c = get_cpu(cpu);
@@ -88,6 +102,10 @@ task_ctrl* sched_new_elf(char* path, u64 cpu) {
   task->ctx.cs  = 0x28;
   task->ctx.ss  = 0x30;
   task->ctx.rflags = 0x202;
+
+  task->ctx.rdi = argc + 1; // argc
+  argv[0] = node->name;
+  task->ctx.rsi = argv;
 
   task->id = sched_glob_id++;
   task->cpu = cpu;

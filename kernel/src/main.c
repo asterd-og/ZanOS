@@ -72,7 +72,7 @@ void hcf() {
 }
 
 void kernel_task() {
-  sched_new_elf("/bin/shell", 1);
+  sched_new_elf("/bin/shell", 1, 3, sched_create_argv(3, "Hello", "World!", "Argument"));
   while (1) {
   }
 }

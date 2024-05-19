@@ -36,7 +36,9 @@ typedef struct task_ctrl {
 void sched_init();
 
 task_ctrl* sched_new_task(void* entry, u64 cpu);
-task_ctrl* sched_new_elf(char* path, u64 cpu);
+
+char** sched_create_argv(int argc, ...);
+task_ctrl* sched_new_elf(char* path, u64 cpu, int argc, char** argv);
 
 void sched_schedule(registers* r);
 

@@ -75,9 +75,9 @@ vfs_node* ext2_finddir(struct vfs_node* vnode, char* path) {
   ext2_inode* dir_inode = (ext2_inode*)kmalloc(sizeof(ext2_inode));
   ext2_read_inode(root_fs, ino_no, dir_inode);
 
-  vfs_node* node = (vfs_node*)malloc(sizeof(vfs_node));
+  vfs_node* node = (vfs_node*)kmalloc(sizeof(vfs_node));
   u32 path_len = strlen(path);
-  node->name = (char*)malloc(path_len);
+  node->name = (char*)kmalloc(path_len);
   memcpy(node->name, path, path_len);
   node->perms |= VFS_DESTROY;
   if (dir_inode->type_perms & EXT_FILE)
