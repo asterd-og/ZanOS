@@ -20,6 +20,7 @@ typedef void(*signal_handler)(int);
 typedef struct task_ctrl {
   registers ctx;
   pagemap* pm;
+  bool user;
   u64 id;
   u64 cpu;
   u64 stack_base;
@@ -35,10 +36,10 @@ typedef struct task_ctrl {
 
 void sched_init();
 
-task_ctrl* sched_new_task(void* entry, u64 cpu);
+task_ctrl* sched_new_task(void* entry, u64 cpu, bool user);
 
 char** sched_create_argv(int argc, ...);
-task_ctrl* sched_new_elf(char* path, u64 cpu, int argc, char** argv);
+task_ctrl* sched_new_elf(char* path, u64 cpu, int argc, char** argv, bool user);
 
 void sched_schedule(registers* r);
 

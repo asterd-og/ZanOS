@@ -40,11 +40,11 @@ run: run-kvm
 
 .PHONY: run-normal
 run-normal: $(IMAGE_NAME).iso
-	$(QEMU) $(QARGS) -M q35 -m 2G -cdrom $(IMAGE_NAME).iso -boot d -serial stdio -no-reboot -no-shutdown -smp $(shell nproc) -drive file="fat.img",format=raw,index=0,media=disk
+	$(QEMU) $(QARGS) -m 2G -cdrom $(IMAGE_NAME).iso -boot d -serial stdio -no-reboot -no-shutdown -smp $(shell nproc) -drive file="disk.img",format=raw -d int
 
 .PHONY: run-kvm
 run-kvm: $(IMAGE_NAME).iso
-	$(QEMU) $(QARGS) -debugcon stdio -m 2G -cdrom $(IMAGE_NAME).iso -boot d -enable-kvm -smp 2 -drive file="disk.img",format=raw
+	qemu-system-x86_64 -debugcon stdio -m 2G -cdrom $(IMAGE_NAME).iso -boot d -enable-kvm -smp 2 -drive file="disk.img",format=raw -no-reboot -no-shutdown
 
 .PHONY: run-kvm-rtl8139
 run-kvm-rtl8139: $(IMAGE_NAME).iso

@@ -18,10 +18,10 @@ void sched_idle() {
 void sched_init() {
   cpu_info* cpu = this_cpu();
   cpu->task_idx = -1;
-  sched_new_task(sched_idle, cpu->lapic_id);
+  sched_new_task(sched_idle, cpu->lapic_id, true);
 }
 
-task_ctrl* sched_new_task(void* entry, u64 cpu) {
+task_ctrl* sched_new_task(void* entry, u64 cpu, bool user) {
   lock(&sched_lock);
 
   cpu_info* c = get_cpu(cpu);
@@ -29,11 +29,18 @@ task_ctrl* sched_new_task(void* entry, u64 cpu) {
   task_ctrl* task = (task_ctrl*)kmalloc(sizeof(task_ctrl));
   memset(task, 0, sizeof(task_ctrl));
 
+  task->user = user;
+
   char* stack = (char*)kmalloc(2 * PAGE_SIZE);
   task->ctx.rsp = (u64)(stack + (2 * PAGE_SIZE));
   task->ctx.rip = (u64)entry;
-  task->ctx.cs  = 0x28;
-  task->ctx.ss  = 0x30;
+  if (user) {
+    task->ctx.cs = 0x43;
+    task->ctx.ss = 0x3b;
+  } else {
+    task->ctx.cs  = 0x28;
+    task->ctx.ss  = 0x30;
+  }
   task->ctx.rflags = 0x202;
 
   task->pm = vmm_new_pm();
@@ -71,7 +78,7 @@ char** sched_create_argv(int argc, ...) {
   return argv;
 }
 
-task_ctrl* sched_new_elf(char* path, u64 cpu, int argc, char** argv) {
+task_ctrl* sched_new_elf(char* path, u64 cpu, int argc, char** argv, bool user) {
   lock(&sched_lock);
 
   cpu_info* c = get_cpu(cpu);

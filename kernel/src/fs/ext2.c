@@ -85,6 +85,9 @@ void ext2_read_singly_blocks(ext2_fs* fs, u32 singly_block_id, u8* buf) {
   kfree(blocks);
 }
 
+void ext2_read_doubly_blocks(ext2_fs* fs, u32 doubly_block_id, u8* buf) {
+}
+
 void ext2_read_inode_blocks(ext2_fs* fs, ext2_inode* in, u8* buf) {
   // TODO: Read singly, doubly and triply linked blocks
   for (int i = 0; i < 12; i++) {

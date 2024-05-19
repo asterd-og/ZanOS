@@ -1,4 +1,5 @@
 #include <sys/gdt.h>
+#include <dev/lapic.h>
 
 // Simple table containing all values for code and data (for 16, 32 and 64 bit).
 u64 gdt_table[] = {
@@ -14,14 +15,19 @@ u64 gdt_table[] = {
   0x00af93000000ffff,
 
   0x00affb000000ffff,
-  0x00aff3000000ffff
+  0x00aff3000000ffff,
+
+  0, // TSS
+  0
 };
+
+tssr tss_list[256];
 
 void gdt_init() {
   gdtr gdt = (gdtr){
-    .size = (sizeof(u64) * 9) - 1,
+    .size = sizeof(gdt_table),
     .address = (u64)&gdt_table
   };
 
-  __asm__ volatile ("lgdt %0\n\t" : : "m"(gdt) : "memory");
+  gdt_flush(&gdt);
 }

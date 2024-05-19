@@ -5,6 +5,7 @@
 #include <sys/gdt.h>
 #include <sys/idt.h>
 #include <sys/smp.h>
+#include <sys/user.h>
 #include <lib/printf.h>
 #include <lib/libc.h>
 #include <flanterm/flanterm.h>
@@ -72,7 +73,7 @@ void hcf() {
 }
 
 void kernel_task() {
-  sched_new_elf("/bin/shell", 1, 3, sched_create_argv(3, "Hello", "World!", "Argument"));
+  // sched_new_elf("/bin/shell", 1, 3, sched_create_argv(3, "Hello", "World!", "Argument"), true);
   while (1) {
   }
 }
@@ -142,7 +143,7 @@ void _start(void) {
   tty_init();
   fb_init();
 
-  sched_new_task(kernel_task, 0);
+  // sched_new_task(kernel_task, 0, true);
 
   irq_register(0x32 - 32, sched_schedule);
   lapic_send_all_int(bsp_lapic_id, 0x32); // Jumpstart the scheduler
