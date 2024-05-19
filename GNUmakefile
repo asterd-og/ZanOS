@@ -80,6 +80,12 @@ limine:
 kernel:
 	$(MAKE) -C kernel
 
+fs:
+	sudo mount disk.img /mnt
+	-sudo rm /mnt/bin/shell
+	sudo cp ../appsZan/shell/shell /mnt/bin/
+	sudo umount disk.img
+
 $(IMAGE_NAME).iso: limine kernel
 	rm -rf iso_root
 	mkdir -p iso_root

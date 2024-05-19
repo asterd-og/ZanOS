@@ -98,7 +98,8 @@ void* pmm_alloc(usize n) {
     }
   }
   unlock(&pmm_lock);
-  return (void*)(first * PAGE_SIZE);
+  u64 addr = first * PAGE_SIZE;
+  return (void*)(addr);
 }
 
 void pmm_free(void* ptr, usize n) {

@@ -3,6 +3,11 @@
 #include <lib/libc.h>
 #include <kernel.h>
 
+u64 syscall_print(syscall_args a) {
+  printf("%s", (char*)a.arg1);
+  return 0;
+}
+
 void* syscall_table[] = {
   syscall_exit,     // 0
   syscall_kill,     // 1
@@ -19,6 +24,10 @@ void* syscall_table[] = {
   syscall_fread,    // 9
   syscall_fwrite,   // 10
   syscall_fclose,   // 11
+  
+  syscall_read,     // 12
+  syscall_write,    // 13
+  syscall_close,    // 14
 };
 
 void syscall_handler(registers* r) {

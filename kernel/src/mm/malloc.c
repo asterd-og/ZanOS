@@ -4,7 +4,8 @@
 #include <sys/smp.h>
 
 void* malloc(u64 size) {
-  return heap_alloc(this_cpu()->task_current->heap_area, size);
+  void* ret = heap_alloc(this_cpu()->task_current->heap_area, size);
+  return ret;
 }
 
 void free(void* ptr) {

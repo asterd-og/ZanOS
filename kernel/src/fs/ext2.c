@@ -74,12 +74,26 @@ u32 ext2_get_inode(ext2_fs* fs, ext2_inode* in, char* name) {
   return 0;
 }
 
+void ext2_read_singly_blocks(ext2_fs* fs, u32 singly_block_id, u8* buf) {
+  u32* blocks = (u32*)kmalloc(fs->block_size);
+  u32 block_count = fs->block_size / 4; // on 1KB Blocks, 13 - 268 (or 256 blocks)
+  ext2_read_block(fs, singly_block_id, blocks);
+  for (int i = 0; i < block_count; i++) {
+    if (blocks[i] == 0) break;
+    ext2_read_block(fs, blocks[i], buf + (i * fs->block_size));
+  }
+  kfree(blocks);
+}
+
 void ext2_read_inode_blocks(ext2_fs* fs, ext2_inode* in, u8* buf) {
   // TODO: Read singly, doubly and triply linked blocks
   for (int i = 0; i < 12; i++) {
     u32 block = in->direct_block_ptr[i];
     if (block == 0) break;
     ext2_read_block(fs, block, buf + (i * fs->block_size));
+  }
+  if (in->singly_block_ptr != 0) {
+    ext2_read_singly_blocks(fs, in->singly_block_ptr, buf + (12 * fs->block_size));
   }
 }
 

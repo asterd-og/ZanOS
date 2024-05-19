@@ -71,35 +71,10 @@ void hcf() {
   for (;;) __asm__ volatile ("hlt");
 }
 
-void* syscall(uint64_t no, ...) {
-  void* args[6];
-
-  va_list va;
-  va_start(va, no);
-
-  for (int i = 0; i < 6; i++) {
-    void* arg = va_arg(va, void*);
-    if (arg == NULL) args[i] = 0;
-    else args[i] = arg;
+void kernel_task() {
+  sched_new_elf("/bin/shell", 1);
+  while (1) {
   }
-
-  __asm__ volatile (
-    "movq %0, %%rax;"
-    "movq %1, %%rdi;"
-    "movq %2, %%rsi;"
-    "movq %3, %%rdx;"
-    "movq %4, %%r10;"
-    "movq %5, %%r8;"
-    "movq %6, %%r9;"
-    "int $0x80;"
-    :
-    : "r"((uint64_t)no), "r"((uint64_t)args[0]), "r"((uint64_t)args[1]), "r"((uint64_t)args[2]), "r"((uint64_t)args[3]), "r"((uint64_t)args[4]), "r"((uint64_t)args[5])
-    : "rax", "rdi", "rsi", "rdx", "r10", "r8"
-  );
-  va_end(va);
-  void* res;
-  __asm__ volatile("": "=a"(res) : : "memory");
-  return res;
 }
 
 // The following will be our kernel's entry point.
@@ -167,7 +142,7 @@ void _start(void) {
   tty_init();
   fb_init();
 
-  sched_new_elf("/bin/shell", 1);
+  sched_new_task(kernel_task, 0);
 
   irq_register(0x32 - 32, sched_schedule);
   lapic_send_all_int(bsp_lapic_id, 0x32); // Jumpstart the scheduler

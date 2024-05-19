@@ -6,6 +6,8 @@
 #define VFS_DIRECTORY 0x2
 #define VFS_DEVICE 0x3
 
+#define VFS_DESTROY 0x1 // Destroy perm
+
 typedef struct {
   char* name;
   u32 ino;
@@ -31,3 +33,4 @@ i32 vfs_read(vfs_node* vnode, u8* buffer, u32 count);
 vfs_dirent* vfs_readdir(vfs_node* vnode, u32 index);
 vfs_node* vfs_finddir(vfs_node* vnode, char* path);
 vfs_node* vfs_open(vfs_node* vnode, char* path); // traverse directories
+void vfs_destroy(vfs_node* vnode);

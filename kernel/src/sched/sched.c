@@ -23,7 +23,7 @@ void sched_init() {
 
 task_ctrl* sched_new_task(void* entry, u64 cpu) {
   lock(&sched_lock);
-  
+
   cpu_info* c = get_cpu(cpu);
 
   task_ctrl* task = (task_ctrl*)kmalloc(sizeof(task_ctrl));
@@ -59,19 +59,23 @@ task_ctrl* sched_new_task(void* entry, u64 cpu) {
 
 task_ctrl* sched_new_elf(char* path, u64 cpu) {
   lock(&sched_lock);
-  
+
   cpu_info* c = get_cpu(cpu);
 
   task_ctrl* task = (task_ctrl*)kmalloc(sizeof(task_ctrl));
   memset(task, 0, sizeof(task_ctrl));
 
   task->pm = vmm_new_pm();
+  task->heap_area = heap_create();
 
   vfs_node* node = vfs_open(vfs_root, path);
-  u8* img = (u8*)kmalloc(node->size);
-  dprintf("sched_new_elf(): Loading elf with %d bytes.\n", node->size);
-  vfs_read(node, img, node->size);
+  u32 size = node->size;
+  u8* img = (u8*)kmalloc(size);
+  dprintf("sched_new_elf(): Loading elf with %u bytes.\n", size);
+  vfs_read(node, img, size);
+  dprintf("sched_new_elf(): Elf read.\n");
   u64 entry = elf_load(img, task->pm);
+  dprintf("sched_new_elf(): Elf loaded.\n");
   if (entry == -1) {
     dprintf("sched_new_elf(): Failed to load elf.\n");
     kfree(task);
@@ -90,6 +94,8 @@ task_ctrl* sched_new_elf(char* path, u64 cpu) {
   task->stack_base = (u64)stack;
   task->sleeping_time = 0;
   task->state = SCHED_RUNNING;
+
+  task->current_dir = vfs_root;
 
   c->task_list[c->task_count++] = task;
 

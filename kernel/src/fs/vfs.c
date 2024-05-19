@@ -51,14 +51,14 @@ vfs_node* vfs_finddir(vfs_node* vnode, char* path) {
 vfs_node* vfs_open(vfs_node* vnode, char* path) {
   bool root = (path[0] == '/');
   int plen = strlen(path);
-  
+
   bool has_subdir = false;
   for (int i = (root ? 1 : 0); i < plen; i++)
     if (path[i] == '/') {
       has_subdir = true;
       break; // it has subdirs
     }
-  
+
   if (!has_subdir)
     return vfs_finddir((root ? vfs_root : vnode), path + (root ? 1 : 0));
 
@@ -69,7 +69,8 @@ vfs_node* vfs_open(vfs_node* vnode, char* path) {
   vfs_node* current = (root ? vfs_root : vnode);
 
   while (token) {
-    if ((current = vfs_finddir(current, token)) == NULL) {
+    current = vfs_finddir(current, token);
+    if (current == NULL) {
       free(_path);
       return NULL;
     }
@@ -78,4 +79,12 @@ vfs_node* vfs_open(vfs_node* vnode, char* path) {
   }
 
   return current;
+}
+
+void vfs_destroy(vfs_node* vnode) {
+  if (!(vnode->perms & VFS_DESTROY))
+    return;
+  
+  free(vnode->name);
+  free(vnode);
 }

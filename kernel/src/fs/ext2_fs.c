@@ -59,38 +59,41 @@ vfs_dirent* ext2_readdir(struct vfs_node* vnode, u32 index) {
 
 vfs_node* ext2_finddir(struct vfs_node* vnode, char* path) {
   lock(&ext2_lock);
-  if (vnode == vfs_root && !strcmp(path, "dev"))
+  if (vnode == vfs_root && !strcmp(path, "dev")) {
+    unlock(&ext2_lock);
     return vfs_dev;
+  }
 
   ext2_inode* ino = (ext2_inode*)kmalloc(sizeof(ext2_inode));
   ext2_read_inode(root_fs, vnode->ino, ino);
   u32 ino_no = ext2_get_inode(root_fs, ino, path);
   if (ino_no == 0) {
-    unlock(&ext2_lock);
     kfree(ino);
+    unlock(&ext2_lock);
     return NULL;
   }
   ext2_inode* dir_inode = (ext2_inode*)kmalloc(sizeof(ext2_inode));
   ext2_read_inode(root_fs, ino_no, dir_inode);
 
-  vfs_node node;
+  vfs_node* node = (vfs_node*)malloc(sizeof(vfs_node));
   u32 path_len = strlen(path);
-  node.name = (char*)kmalloc(path_len);
-  memcpy(node.name, path, path_len);
-  node.perms = 0; // TODO: Implement perms
+  node->name = (char*)malloc(path_len);
+  memcpy(node->name, path, path_len);
+  node->perms |= VFS_DESTROY;
   if (dir_inode->type_perms & EXT_FILE)
-    node.type = VFS_FILE;
+    node->type = VFS_FILE;
   else if (dir_inode->type_perms & EXT_DIRECTORY)
-    node.type = VFS_DIRECTORY;
-  node.size = dir_inode->size;
-  node.ino = ino_no;
-  node.read = ext2_read;
-  node.readdir = ext2_readdir;
-  node.finddir = ext2_finddir;
+    node->type = VFS_DIRECTORY;
+  node->size = ALIGN_UP(dir_inode->size, root_fs->block_size); // To make sure it can read blocks
+  // Without interfering in other allocations.
+  node->ino = ino_no;
+  node->read = ext2_read;
+  node->readdir = ext2_readdir;
+  node->finddir = ext2_finddir;
   
   kfree(ino);
   kfree(dir_inode);
 
   unlock(&ext2_lock);
-  return &node;
+  return node;
 }
