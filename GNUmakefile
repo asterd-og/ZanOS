@@ -4,8 +4,9 @@ override MAKEFLAGS += -rR
 override IMAGE_NAME := ZanOS
 
 # Change those in your machine!
-QEMU := ./../build/qemu-system-x86_64
-QARGS := -L /usr/share/seabios/ -L /usr/share/qemu -L /usr/lib/ipxe/qemu/
+# QEMU := ./../build/qemu-system-x86_64
+# QARGS := -L /usr/share/seabios/ -L /usr/share/qemu -L /usr/lib/ipxe/qemu/
+QEMU := qemu-system-x86_64
 
 # Convenience macro to reliably declare user overridable variables.
 define DEFAULT_VAR =
@@ -38,9 +39,12 @@ all-hdd: $(IMAGE_NAME).hdd
 .PHONY: run
 run: run-kvm
 
+all-vbox: $(IMAGE_NAME).iso
+	cp ZanOS.iso /mnt/c/Users/astrido/Documents/
+
 .PHONY: run-normal
 run-normal: $(IMAGE_NAME).iso
-	$(QEMU) $(QARGS) -m 2G -cdrom $(IMAGE_NAME).iso -boot d -serial stdio -no-reboot -no-shutdown -smp $(shell nproc) -drive file="disk.img",format=raw -d int
+	$(QEMU) $(QARGS) -debugcon stdio -m 2G -cdrom $(IMAGE_NAME).iso -boot d -smp 2 -drive file="disk.img",format=raw -no-reboot -no-shutdown
 
 .PHONY: run-kvm
 run-kvm: $(IMAGE_NAME).iso

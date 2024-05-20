@@ -18,5 +18,7 @@ u64 ioapic_init();
 void ioapic_write(madt_ioapic* ioapic, u8 reg, u32 val);
 u32 ioapic_read(madt_ioapic* ioapic, u8 reg);
 
+void ioapic_set_entry(madt_ioapic* ioapic, u8 idx, u64 data);
+
 void ioapic_redirect_irq(u32 lapic_id, u8 vec, u8 irq, bool mask);
 u32 ioapic_get_redirect_irq(u8 irq);

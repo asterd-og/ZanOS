@@ -7,6 +7,7 @@ u64 pit_ticks = 0;
 void pit_handler(registers* r) {
   (void)r;
   pit_ticks++;
+  printf(".");
   lapic_eoi();
 }
 

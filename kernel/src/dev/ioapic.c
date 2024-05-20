@@ -13,9 +13,9 @@ u64 ioapic_init() {
     return 0;
   }
 
-  for (u32 i = 0; i <= count; ++i) {
-    ioapic_write(ioapic, IOAPIC_REDTBL+2*i, 0x00010000 | (32 + i));
-    ioapic_write(ioapic, IOAPIC_REDTBL+2*i+1, 0); // redir cpu
+  for (u8 i = 0; i < count; ++i) {
+    // ioapic_redirect_irq(ioapic->apic_id, i + 32, i, false);
+    ioapic_set_entry(ioapic, i, 1 << 16);
   }
   
   dprintf("ioapic_init(): IO/APIC Initialised.\n");
@@ -77,7 +77,7 @@ void ioapic_redirect_gsi(u32 lapic_id, u8 vec, u32 gsi, u16 flags, bool mask) {
 
 void ioapic_redirect_irq(u32 lapic_id, u8 vec, u8 irq, bool mask) {
   u8 idx = 0;
-  madt_iso* iso;
+  madt_iso* iso = NULL;
 
   while (idx < madt_iso_len) {
     iso = madt_iso_list[idx];

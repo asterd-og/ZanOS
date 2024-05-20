@@ -47,7 +47,7 @@ void idt_reinit();
 
 void idt_switch_to_apic();
 
-void idt_set_entry(u8 vec, void* isr, u8 attr);
+void idt_set_entry(u8 vec, void* isr);
 
 void irq_register(u8 vec, void* handler);
 void irq_unregister(u8 vec);

@@ -43,18 +43,16 @@ u64 acpi_init() {
 
   if (memcmp(rsdp->sign, "RSD PTR", 7))
     return 0;
-
+  
   if (rsdp->revision != 0) {
     // Use XSDT
     acpi_use_xsdt = true;
     acpi_xsdp* xsdp = (acpi_xsdp*)addr;
-    acpi_root_sdt = (acpi_xsdt*)HIGHER_HALF(xsdp->xsdt_addr);
+    acpi_root_sdt = (acpi_xsdt*)HIGHER_HALF((u64)xsdp->xsdt_addr);
     return xsdp->xsdt_addr;
   }
   
   acpi_root_sdt = (acpi_rsdt*)HIGHER_HALF((u64)rsdp->rsdt_addr);
-
-  dprintf("acpi_init(): Found %s.\n", (acpi_use_xsdt ? "XSDT" : "RSDT"));
 
   return rsdp->rsdt_addr;
 }
