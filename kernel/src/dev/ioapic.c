@@ -13,9 +13,9 @@ u64 ioapic_init() {
     return 0;
   }
 
-  for (u8 i = 0; i < count; ++i) {
-    // ioapic_redirect_irq(ioapic->apic_id, i + 32, i, false);
-    ioapic_set_entry(ioapic, i, 1 << 16);
+  for (u8 i = 0; i <= count; ++i) {
+    ioapic_write(ioapic, IOAPIC_REDTBL+2*i, 0x00010000 | (32 + i));
+    ioapic_write(ioapic, IOAPIC_REDTBL+2*i+1, 0); // redir cpu
   }
   
   dprintf("ioapic_init(): IO/APIC Initialised.\n");

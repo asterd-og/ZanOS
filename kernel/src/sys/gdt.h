@@ -14,11 +14,6 @@ typedef struct {
 } tss_entry;
 
 typedef struct {
-  u64 gdt_entries[9];
-  tss_entry tss_entry;
-} gdt_table;
-
-typedef struct {
   u16 size;
   u64 address;
 } __attribute__((packed)) gdtr;
