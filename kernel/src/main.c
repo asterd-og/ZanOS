@@ -128,7 +128,9 @@ void _start(void) {
   pmm_init();
   vmm_init();
   
-  tss_list[0].rsp[0] = (u64)(HIGHER_HALF(pmm_alloc(3)) + (3 * PAGE_SIZE));
+  void* stack = HIGHER_HALF(pmm_alloc(3)) + (3 * PAGE_SIZE);
+  tss_list[0].rsp[0] = (u64)stack;
+  write_kernel_gs(stack);
 
   kheap_init();
   dprintf("KHeap initialised.\n");
@@ -152,6 +154,7 @@ void _start(void) {
   keyboard_init();
   tty_init();
   fb_init();
+  user_init();
 
   sched_new_task(kernel_task, 0, false);
 

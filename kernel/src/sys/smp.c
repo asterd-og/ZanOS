@@ -23,7 +23,9 @@ void smp_init_cpu(struct limine_smp_info* smp_info) {
   while (smp_cpu_started < smp_info->lapic_id - 1)
     __asm__ volatile ("pause");
   
-  tss_list[smp_info->lapic_id].rsp[0] = (u64)(HIGHER_HALF(pmm_alloc(3)) + (3 * PAGE_SIZE));
+  void* stack = HIGHER_HALF(pmm_alloc(3)) + (3 * PAGE_SIZE);
+  tss_list[smp_info->lapic_id].rsp[0] = (u64)stack;
+  write_kernel_gs(stack);
   
   cpu_info* c = (cpu_info*)kmalloc(sizeof(cpu_info));
   memset(c, 0, sizeof(cpu_info));
@@ -35,6 +37,7 @@ void smp_init_cpu(struct limine_smp_info* smp_info) {
   vmm_switch_pm(vmm_kernel_pm);
 
   lapic_init();
+  user_init();
   sched_init();
 
   dprintf("smp_init_cpu(): CPU %ld started.\n", smp_info->lapic_id);

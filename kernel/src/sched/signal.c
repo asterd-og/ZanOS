@@ -38,6 +38,6 @@ char* signals_to_str[] = {
 
 void sig_def_handler(int signal) {
   cpu_info* c = this_cpu();
-  printf("\033[38;2;255;0;0mSignal %d (%s) caught.\033[0m\n", signal, signals_to_str[signal]);
-  sched_kill(c->task_list[c->task_idx]);
+  printf("\033[38;2;255;0;0mSignal %d (%s) caught on task %ld.\033[0m\n", signal, signals_to_str[signal], c->task_current->id);
+  sched_kill(c->task_current);
 }

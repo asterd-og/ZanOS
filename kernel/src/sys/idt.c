@@ -49,8 +49,9 @@ static const char* isr_errors[32] = {
 };
 
 void idt_init() {
-  for (u16 vec = 0; vec < 256; vec++)
-    idt_set_entry(vec, idt_int_table[vec]);
+  for (u16 vec = 0; vec < 256; vec++) {
+    idt_set_entry(vec, idt_int_table[vec], 0x8E, (vec == 0x80 ? 3 : 0));
+  }
 
   idt = (idtr){
     .size   = (u16)sizeof(idt_entry) * 256 - 1,
@@ -66,11 +67,13 @@ void idt_reinit() {
   __asm__ ("sti");
 }
 
-void idt_set_entry(u8 vec, void* isr) {
+void idt_set_entry(u8 vec, void* isr, u8 type, u8 dpl) {
   idt_entries[vec].low  = (u64)isr & 0xFFFF;
   idt_entries[vec].cs   = 0x28;
   idt_entries[vec].ist  = 0;
-  idt_entries[vec].attr = (u8)0x8E;
+  idt_entries[vec].type = type;
+  idt_entries[vec].dpl  = dpl;
+  idt_entries[vec].p    = 1;
   idt_entries[vec].mid  = ((u64)isr >> 16) & 0xFFFF;
   idt_entries[vec].high = ((u64)isr >> 32) & 0xFFFFFFFF;
   idt_entries[vec].resv = 0;
@@ -86,24 +89,25 @@ void irq_unregister(u8 vec) {
 }
 
 void isr_handler(registers* r) {
-  if (r->int_no == 0x80) {
-    syscall_handler(r);
-    return;
-  }
-  
   if (r->int_no == 0xff)
     return; // Spurious interrupt
+  
+  if (r->int_no == 0x80) {
+    syscall_handle(r);
+    return;
+  }
   
   if (r->int_no == 14) {
     // Page fault
     if (this_cpu()->pm != vmm_kernel_pm) {
+      dprintf("isr_handler(): Task segmentation fault. RIP %llx.\n", r->rip);
       sig_raise(SIGSEGV);
       return;
     }
   }
   
   __asm__ volatile ("cli");
-  dprintf("isr_handler(): System fault! %s.\n", isr_errors[r->int_no]);
+  dprintf("isr_handler(): System fault! %s. RIP: %llx. CS: %x SS: %x\n", isr_errors[r->int_no], r->rip, r->cs, r->ss);
   for (;;) __asm__ volatile("hlt");
 }
 

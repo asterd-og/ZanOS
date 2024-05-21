@@ -32,6 +32,9 @@ typedef struct task_ctrl {
   file_descriptor fds[256];
   u16 fd_idx;
   signal_handler sigs[32];
+
+  u64 gs_base; // To be switched with kernel stack
+  u64 kernel_gs;
 } task_ctrl;
 
 void sched_init();

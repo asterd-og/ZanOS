@@ -36,6 +36,7 @@ void vmm_map(pagemap* pm, uptr vaddr, uptr paddr, u64 flags);
 void vmm_map_user(pagemap* pm, uptr vaddr, uptr paddr, u64 flags);
 void vmm_unmap(pagemap* pm, uptr vaddr);
 void vmm_map_range(pagemap* pm, uptr vaddr, uptr paddr, u64 pages, u64 flags);
+void vmm_map_user_range(pagemap* pm, uptr vaddr, uptr paddr, u64 pages, u64 flags);
 
 void* vmm_alloc(u64 pages, u64 flags);
 void vmm_free(void* ptr, u64 pages);

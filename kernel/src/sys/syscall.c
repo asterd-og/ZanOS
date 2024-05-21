@@ -3,11 +3,6 @@
 #include <lib/libc.h>
 #include <kernel.h>
 
-u64 syscall_print(syscall_args a) {
-  printf("%s", (char*)a.arg1);
-  return 0;
-}
-
 void* syscall_table[] = {
   syscall_exit,     // 0
   syscall_kill,     // 1
@@ -30,7 +25,7 @@ void* syscall_table[] = {
   syscall_close,    // 14
 };
 
-void syscall_handler(registers* r) {
+void syscall_handle(registers* r) {
   if (syscall_table[r->rax] != NULL) {
     syscall_args args;
     args.arg1 = (void*)r->rdi;

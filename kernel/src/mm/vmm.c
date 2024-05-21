@@ -116,6 +116,11 @@ void vmm_map_range(pagemap* pm, uptr vaddr, uptr paddr, u64 pages, u64 flags) {
     vmm_map(pm, vaddr + (i * PAGE_SIZE), paddr + (i * PAGE_SIZE), flags);
 }
 
+void vmm_map_user_range(pagemap* pm, uptr vaddr, uptr paddr, u64 pages, u64 flags) {
+  for (u64 i = 0; i < pages; i++)
+    vmm_map_user(pm, vaddr + (i * PAGE_SIZE), paddr + (i * PAGE_SIZE), flags);
+}
+
 void* vmm_alloc(u64 pages, u64 flags) {
   void* pg = pmm_alloc(pages);
   if (!pg) return NULL;

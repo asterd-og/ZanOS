@@ -6,7 +6,9 @@ typedef struct {
   u16 low;
   u16 cs;
   u8  ist;
-  u8  attr;
+  u8  type : 5;
+  u8  dpl : 2;
+  u8  p : 1;
   u16 mid;
   u32 high;
   u32 resv;
@@ -47,7 +49,8 @@ void idt_reinit();
 
 void idt_switch_to_apic();
 
-void idt_set_entry(u8 vec, void* isr);
+void idt_set_entry(u8 vec, void* isr, u8 type, u8 dpl);
 
 void irq_register(u8 vec, void* handler);
+void irq_register_user(u8 vec, void* handler);
 void irq_unregister(u8 vec);

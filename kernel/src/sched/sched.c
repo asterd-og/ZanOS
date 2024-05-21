@@ -1,5 +1,6 @@
 #include <sched/sched.h>
 #include <sys/smp.h>
+#include <sys/cpu.h>
 #include <lib/lock.h>
 #include <lib/elf.h>
 #include <dev/pit.h>
@@ -103,18 +104,20 @@ task_ctrl* sched_new_elf(char* path, u64 cpu, int argc, char** argv, bool user) 
     return NULL;
   }
 
-  char* stack = (char*)kmalloc(2 * PAGE_SIZE);
-  task->ctx.rsp = (u64)(stack + (2 * PAGE_SIZE));
+  char* stack = (char*)pmm_alloc(3);
+  task->ctx.rsp = (u64)(stack + (3 * PAGE_SIZE));
   task->ctx.rip = (u64)entry;
   task->ctx.cs  = (user ? 0x43 : 0x28);
   task->ctx.ss  = (user ? 0x3B : 0x30);
   task->ctx.rflags = 0x202;
 
-  vmm_map_user(task->pm, stack, PHYSICAL(stack), PTE_PRESENT | PTE_WRITABLE | PTE_USER);
+  vmm_map_user_range(task->pm, stack, stack, 3, PTE_PRESENT | PTE_WRITABLE | PTE_USER);
 
   task->ctx.rdi = argc + 1; // argc
   argv[0] = node->name;
   task->ctx.rsi = argv;
+
+  vmm_map_user_range(task->pm, argv, PHYSICAL(argv), DIV_ROUND_UP(sizeof(argv), PAGE_SIZE), PTE_PRESENT | PTE_WRITABLE | PTE_USER);
 
   task->id = sched_glob_id++;
   task->cpu = cpu;
@@ -122,9 +125,14 @@ task_ctrl* sched_new_elf(char* path, u64 cpu, int argc, char** argv, bool user) 
   task->sleeping_time = 0;
   task->state = SCHED_RUNNING;
 
+  task->gs_base = task->ctx.rsp;
+  task->kernel_gs = (u64)(kmalloc(3 * PAGE_SIZE) + (3 * PAGE_SIZE));
+
   task->current_dir = vfs_root;
 
   c->task_list[c->task_count++] = task;
+
+  dprintf("sched_new_elf(): Task %ld created.\n", task->id);
 
   unlock(&sched_lock);
 
@@ -156,8 +164,9 @@ void sched_schedule(registers* r) {
 
   cpu_info* c = this_cpu();
 
-  if (c->task_current != NULL)
+  if (c->task_current != NULL) {
     c->task_current->ctx = *r;
+  }
   
   c->task_current = sched_get_next_task(c);
   vmm_switch_pm(c->task_current->pm);

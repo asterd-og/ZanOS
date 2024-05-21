@@ -12,7 +12,7 @@ typedef struct {
   void* arg6;
 } syscall_args;
 
-void syscall_handler(registers* r);
+void syscall_handle(registers* r);
 
 u64 syscall_exit(syscall_args a);
 u64 syscall_kill(syscall_args a);
