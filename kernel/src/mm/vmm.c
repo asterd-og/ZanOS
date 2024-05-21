@@ -82,6 +82,19 @@ void vmm_map(pagemap* pm, uptr vaddr, uptr paddr, u64 flags) {
   pml1[pml1_entry] = paddr | flags;
 }
 
+void vmm_map_user(pagemap* pm, uptr vaddr, uptr paddr, u64 flags) {
+  uptr pml1_entry = (vaddr >> 12) & 0x1ff;
+  uptr pml2_entry = (vaddr >> 21) & 0x1ff;
+  uptr pml3_entry = (vaddr >> 30) & 0x1ff;
+  uptr pml4_entry = (vaddr >> 39) & 0x1ff;
+
+  uptr* pml3 = vmm_get_next_lvl(pm, pml4_entry, flags, true);       // pml4[pml4Entry] = pml3
+  uptr* pml2 = vmm_get_next_lvl(pml3, pml3_entry, flags, true);     // pml3[pml3Entry] = pml2
+  uptr* pml1 = vmm_get_next_lvl(pml2, pml2_entry, flags, true);     // pml2[pml2Entry] = pml1
+
+  pml1[pml1_entry] = paddr | flags;
+}
+
 void vmm_unmap(pagemap* pm, uptr vaddr) {
   uptr pml1_entry = (vaddr >> 12) & 0x1ff;
   uptr pml2_entry = (vaddr >> 21) & 0x1ff;

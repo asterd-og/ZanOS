@@ -22,6 +22,7 @@
     "fs.h": "c",
     "heap.h": "c",
     "malloc.h": "c",
-    "syscall.h": "c"
+    "syscall.h": "c",
+    "lapic.h": "c"
   }
 }

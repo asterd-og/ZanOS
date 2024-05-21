@@ -23,6 +23,8 @@ void smp_init_cpu(struct limine_smp_info* smp_info) {
   while (smp_cpu_started < smp_info->lapic_id - 1)
     __asm__ volatile ("pause");
   
+  tss_list[smp_info->lapic_id].rsp[0] = (u64)(HIGHER_HALF(pmm_alloc(3)) + (3 * PAGE_SIZE));
+  
   cpu_info* c = (cpu_info*)kmalloc(sizeof(cpu_info));
   memset(c, 0, sizeof(cpu_info));
   c->lapic_id = smp_info->lapic_id;

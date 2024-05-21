@@ -3,9 +3,9 @@
 #include <types.h>
 #include <mm/pmm.h>
 
-#define PTE_PRESENT 1ull
-#define PTE_WRITABLE (1ull << 1)
-#define PTE_USER (1ull << 2)
+#define PTE_PRESENT (u64)1
+#define PTE_WRITABLE (u64)2
+#define PTE_USER (u64)4
 #define PTE_NX (1ull << 63)
 
 #define PTE_ADDR_MASK 0x000ffffffffff000
@@ -33,6 +33,7 @@ void vmm_switch_pm_nocpu(pagemap* pm);
 void vmm_switch_pm(pagemap* pm);
 
 void vmm_map(pagemap* pm, uptr vaddr, uptr paddr, u64 flags);
+void vmm_map_user(pagemap* pm, uptr vaddr, uptr paddr, u64 flags);
 void vmm_unmap(pagemap* pm, uptr vaddr);
 void vmm_map_range(pagemap* pm, uptr vaddr, uptr paddr, u64 pages, u64 flags);
 

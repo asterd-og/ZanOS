@@ -63,6 +63,11 @@ void* get_mod_addr(int pos) {
   return module_request.response->modules[pos]->address;
 }
 
+struct limine_stack_size_request stack_sz_request = {
+  .id = LIMINE_STACK_SIZE_REQUEST,
+  .revision = 0
+};
+
 void putchar_(char c) {
   char str[1] = {c};
   flanterm_write(ft_ctx, str, 1);
@@ -73,10 +78,12 @@ void hcf() {
 }
 
 void kernel_task() {
-  // sched_new_elf("/bin/shell", 1, 3, sched_create_argv(3, "Hello", "World!", "Argument"), true);
+  sched_new_elf("/bin/shell", 1, 3, sched_create_argv(3, "Hello", "World!", "Argument"), true);
   while (1) {
   }
 }
+
+// 
 
 // The following will be our kernel's entry point.
 // If renaming _start() to something else, make sure to change the
@@ -120,6 +127,9 @@ void _start(void) {
   idt_init();
   pmm_init();
   vmm_init();
+  
+  tss_list[0].rsp[0] = (u64)(HIGHER_HALF(pmm_alloc(3)) + (3 * PAGE_SIZE));
+
   kheap_init();
   dprintf("KHeap initialised.\n");
   if (!acpi_init()) {
@@ -143,7 +153,7 @@ void _start(void) {
   tty_init();
   fb_init();
 
-  // sched_new_task(kernel_task, 0, true);
+  sched_new_task(kernel_task, 0, false);
 
   irq_register(0x32 - 32, sched_schedule);
   lapic_send_all_int(bsp_lapic_id, 0x32); // Jumpstart the scheduler

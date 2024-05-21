@@ -3,7 +3,7 @@
 #include <types.h>
 
 typedef struct {
-  u16 limit;
+  u16 length;
   u16 base;
   u8  base1;
   u8  flags;
@@ -11,7 +11,12 @@ typedef struct {
   u8  base2;
   u32 base3;
   u32 resv;
-} tss_entry;
+} __attribute__((packed)) tss_entry;
+
+typedef struct {
+  u64 gdt_entries[9];
+  tss_entry tss_entry;
+} __attribute__((packed)) gdt_table;
 
 typedef struct {
   u16 size;
