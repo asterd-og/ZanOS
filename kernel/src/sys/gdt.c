@@ -46,5 +46,4 @@ void gdt_init() {
 
   __asm__ volatile ("lgdt %0\n\t" : : "m"(gdt) : "memory");
   __asm__ volatile ("ltr %0\n\t" : : "r"((u16)0x48));
-  // gdt_flush(&gdt);
 }
