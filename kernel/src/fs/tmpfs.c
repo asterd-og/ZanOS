@@ -70,6 +70,8 @@ vfs_node* tmpfs_finddir(struct vfs_node* vnode, char* path) {
 
   vfs_node* node = (vfs_node*)kmalloc(sizeof(vfs_node));
   u32 path_len = strlen(path);
+  node->parent = vnode;
+  node->open = true;
   node->name = (char*)kmalloc(path_len);
   memcpy(node->name, path, path_len);
   node->perms |= VFS_DESTROY;

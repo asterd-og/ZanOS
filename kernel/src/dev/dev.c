@@ -34,6 +34,8 @@ void dev_add(vfs_node* vnode) {
 
 void dev_init() {
   vfs_dev = (vfs_node*)kmalloc(sizeof(vfs_node));
+  vfs_dev->parent = vfs_root;
+  vfs_dev->open = true;
   vfs_dev->name = (char*)kmalloc(4);
   memcpy(vfs_dev->name, "dev", 4);
   vfs_dev->ino = 0;

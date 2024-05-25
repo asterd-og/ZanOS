@@ -33,3 +33,9 @@ u64 syscall_fclose(syscall_args a);
 u64 syscall_read(syscall_args a);
 u64 syscall_write(syscall_args a);
 u64 syscall_close(syscall_args a);
+
+u64 syscall_getcwd(syscall_args a);
+u64 syscall_chdir(syscall_args a);
+
+u64 syscall_opendir(syscall_args a);
+u64 syscall_readdir(syscall_args a);

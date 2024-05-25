@@ -1,6 +1,7 @@
 #include <sys/syscall.h>
 #include <sched/signal.h>
 #include <lib/libc.h>
+#include <dev/char/serial.h>
 #include <kernel.h>
 
 void* syscall_table[] = {
@@ -23,6 +24,12 @@ void* syscall_table[] = {
   syscall_read,     // 12
   syscall_write,    // 13
   syscall_close,    // 14
+
+  syscall_getcwd,   // 15
+  syscall_chdir,    // 16
+
+  syscall_opendir,  // 17
+  syscall_readdir,  // 18
 };
 
 void syscall_handle(registers* r) {

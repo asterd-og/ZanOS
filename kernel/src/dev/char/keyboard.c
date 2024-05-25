@@ -1,7 +1,6 @@
 #include <dev/char/keyboard.h>
 #include <dev/char/keyboard_map.h>
 #include <dev/lapic.h>
-#include <dev/dev.h>
 #include <sys/idt.h>
 #include <sys/ports.h>
 #include <lib/lock.h>
@@ -12,6 +11,8 @@ bool keyboard_pressed = false;
 u32 keyboard_char = '\0';
 bool keyboard_caps = false;
 bool keyboard_shift = false;
+
+vfs_node* kb_node = NULL;
 
 atomic_lock kb_lock;
 
@@ -75,7 +76,7 @@ i32 keyboard_read(struct vfs_node* vnode, u8* buffer, u32 count) {
 }
 
 void keyboard_init() {
-  vfs_node* kb_node = (vfs_node*)kmalloc(sizeof(vfs_node));
+  kb_node = (vfs_node*)kmalloc(sizeof(vfs_node));
   kb_node->name = (char*)kmalloc(9);
   memcpy(kb_node->name, "keyboard", 9);
   kb_node->ino = 0;

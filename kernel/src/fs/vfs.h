@@ -15,6 +15,8 @@ typedef struct {
 
 typedef struct vfs_node {
   char* name;
+  struct vfs_node* parent;
+  bool open;
   u32 perms;
   u32 type;
   u32 size;
@@ -24,6 +26,11 @@ typedef struct vfs_node {
   vfs_dirent*(*readdir)(struct vfs_node* vnode, u32 index);
   struct vfs_node*(*finddir)(struct vfs_node* vnode, char* path);
 } vfs_node;
+
+typedef struct {
+  vfs_node* node;
+  u32 current_index;
+} DIR; // For syscalls
 
 extern vfs_node* vfs_root; // "/" path
 

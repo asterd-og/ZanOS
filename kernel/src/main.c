@@ -143,16 +143,17 @@ void _start(void) {
   lapic_calibrate_timer();
   sched_init();
   dprintf("_start(): Initialised scheduler.\n");
-  // ata_init();
+  ata_init();
   printf("\033[38;2;0;255;255mZanOS\033[0m Booted successfully with %ld cores.\n", smp_cpu_count);
-  // ext2_init();
-  // vfs_init();
-  // dev_init();
-  // keyboard_init();
-  // tty_init();
-  // fb_init();
-
+  ext2_init();
+  vfs_init();
   tmpfs_init(get_mod_addr(0));
+  dev_init();
+  keyboard_init();
+  tty_init();
+  fb_init();
+
+  sched_new_task(kernel_task, 0, false);
 
   irq_register(0x32 - 32, sched_schedule);
   lapic_send_all_int(bsp_lapic_id, 0x32); // Jumpstart the scheduler

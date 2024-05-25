@@ -26,6 +26,8 @@
     "lapic.h": "c",
     "acpi.h": "c",
     "tmpfs.h": "c",
-    "lock.h": "c"
+    "lock.h": "c",
+    "serial.h": "c",
+    "dev.h": "c"
   }
 }

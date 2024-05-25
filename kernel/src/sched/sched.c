@@ -6,6 +6,7 @@
 #include <dev/pit.h>
 #include <dev/dev.h>
 #include <dev/tty.h>
+#include <dev/char/keyboard.h>
 #include <fs/vfs.h>
 
 u64 sched_glob_id = 0;
@@ -124,7 +125,11 @@ task_ctrl* sched_new_elf(char* path, u64 cpu, int argc, char** argv) {
   task->sleeping_time = 0;
   task->state = SCHED_RUNNING;
 
-  task->current_dir = vfs_root;
+  task->current_dir = node->parent;
+  task->fds[0] = fd_open(kb_node, FS_READ, 0); // stdin
+  task->fds[1] = fd_open(tty_node, FS_READ | FS_WRITE, 1); // stdout
+  task->fds[2] = fd_open(tty_node, FS_READ | FS_WRITE, 2); // stderr
+  task->fd_idx = 3;
 
   c->task_list[c->task_count++] = task;
 

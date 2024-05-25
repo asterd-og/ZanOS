@@ -37,17 +37,23 @@ all: $(IMAGE_NAME).iso
 all-hdd: $(IMAGE_NAME).hdd
 
 .PHONY: run
-run: run-kvm
+run: run-normal
 
 all-vbox: $(IMAGE_NAME).iso
 	cp ZanOS.iso /mnt/c/Users/astrido/Documents/
 
 .PHONY: run-normal
 run-normal: $(IMAGE_NAME).iso
-	$(QEMU) $(QARGS) -debugcon stdio -m 2G -cdrom $(IMAGE_NAME).iso -boot d -smp 2 -drive file="disk.img",format=raw -no-reboot -no-shutdown
+	qemu-system-x86_64 -debugcon stdio \
+	-m 2G \
+	-cdrom $(IMAGE_NAME).iso \
+	-boot d \
+	-enable-kvm \
+	-smp 2 \
+	-drive file="disk.img",format=raw \
+	-no-reboot -no-shutdown
 
-.PHONY: run-kvm
-run-kvm: $(IMAGE_NAME).iso
+run-ahci: $(IMAGE_NAME).iso
 	qemu-system-x86_64 -debugcon stdio \
 	-m 2G \
 	-cdrom $(IMAGE_NAME).iso \
@@ -57,16 +63,6 @@ run-kvm: $(IMAGE_NAME).iso
 	-drive id=disk,file=disk.img,if=none \
 	-device ahci,id=ahci \
 	-device ide-hd,drive=disk,bus=ahci.0 \
-	-no-reboot -no-shutdown
-
-run-ata: $(IMAGE_NAME).iso
-	qemu-system-x86_64 -debugcon stdio \
-	-m 2G \
-	-cdrom $(IMAGE_NAME).iso \
-	-boot d \
-	-enable-kvm \
-	-smp 2 \
-	-drive file="disk.img",format=raw \
 	-no-reboot -no-shutdown
 
 .PHONY: run-kvm-rtl8139

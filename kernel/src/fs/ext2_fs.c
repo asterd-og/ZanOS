@@ -1,8 +1,11 @@
 #include <fs/ext2.h>
+#include <fs/tmpfs.h>
 #include <lib/libc.h>
 #include <lib/lock.h>
 #include <mm/kmalloc.h>
+#include <mm/malloc.h>
 #include <dev/dev.h>
+#include <dev/char/serial.h>
 
 atomic_lock ext2_lock;
 
@@ -41,9 +44,9 @@ vfs_dirent* ext2_readdir(struct vfs_node* vnode, u32 index) {
         kfree(_buf);
         return NULL;
       }
-      vfs_dirent* dirent = (vfs_dirent*)kmalloc(sizeof(vfs_dirent));
+      vfs_dirent* dirent = (vfs_dirent*)malloc(sizeof(vfs_dirent));
       dirent->ino = dir->inode;
-      dirent->name = (char*)kmalloc(dir->name_len);
+      dirent->name = (char*)malloc(dir->name_len);
       memcpy(dirent->name, dir->name, dir->name_len);
       kfree(_buf);
       unlock(&ext2_lock);
@@ -59,9 +62,14 @@ vfs_dirent* ext2_readdir(struct vfs_node* vnode, u32 index) {
 
 vfs_node* ext2_finddir(struct vfs_node* vnode, char* path) {
   lock(&ext2_lock);
-  if (vnode == vfs_root && !strcmp(path, "dev")) {
-    unlock(&ext2_lock);
-    return vfs_dev;
+  if (vnode == vfs_root) {
+    if (!strcmp(path, "dev")) {
+      unlock(&ext2_lock);
+      return vfs_dev;
+    } else if (!strcmp(path, "tmpfs")) {
+      unlock(&ext2_lock);
+      return vfs_tmpfs;
+    }
   }
 
   ext2_inode* ino = (ext2_inode*)kmalloc(sizeof(ext2_inode));
@@ -77,6 +85,8 @@ vfs_node* ext2_finddir(struct vfs_node* vnode, char* path) {
 
   vfs_node* node = (vfs_node*)kmalloc(sizeof(vfs_node));
   u32 path_len = strlen(path);
+  node->parent = vnode;
+  node->open = true;
   node->name = (char*)kmalloc(path_len);
   memcpy(node->name, path, path_len);
   node->perms |= VFS_DESTROY;

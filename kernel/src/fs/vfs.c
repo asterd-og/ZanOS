@@ -4,11 +4,14 @@
 #include <mm/kmalloc.h>
 #include <lib/libc.h>
 #include <lib/lock.h>
+#include <dev/char/serial.h>
 
 vfs_node* vfs_root;
 
 void vfs_init() {
   vfs_root = (vfs_node*)kmalloc(sizeof(vfs_node));
+  vfs_root->parent = NULL;
+  vfs_root->open = true;
   vfs_root->name = kmalloc(2);
   vfs_root->name[0] = '/';
   vfs_root->name[1] = '\0';
@@ -21,7 +24,7 @@ void vfs_init() {
 }
 
 i32 vfs_write(vfs_node* vnode, u8* buffer, u32 count) {
-  if (vnode) return -1;
+  if (!vnode) return -1;
   if (vnode->write)
     return vnode->write(vnode, buffer, count);
   return -1;
@@ -49,6 +52,12 @@ vfs_node* vfs_finddir(vfs_node* vnode, char* path) {
 }
 
 vfs_node* vfs_open(vfs_node* vnode, char* path) {
+  if (path[0] == '.') {
+    if (path[1] == '.') {
+      return vnode->parent;
+    }
+    return vnode;
+  }
   bool root = (path[0] == '/');
   int plen = strlen(path);
 
@@ -62,7 +71,7 @@ vfs_node* vfs_open(vfs_node* vnode, char* path) {
   if (!has_subdir)
     return vfs_finddir((root ? vfs_root : vnode), path + (root ? 1 : 0));
 
-  char* _path = (char*)malloc(plen);
+  char* _path = (char*)kmalloc(plen);
   memcpy(_path, (root ? path + 1 : path), plen);
 
   char* token = strtok(_path, "/");
@@ -71,18 +80,19 @@ vfs_node* vfs_open(vfs_node* vnode, char* path) {
   while (token) {
     current = vfs_finddir(current, token);
     if (current == NULL) {
-      free(_path);
+      kfree(_path);
       return NULL;
     }
 
     token = strtok(NULL, "/");
   }
+  kfree(_path);
 
   return current;
 }
 
 void vfs_destroy(vfs_node* vnode) {
-  if (!(vnode->perms & VFS_DESTROY))
+  if (!(vnode->perms & VFS_DESTROY) || vnode->open)
     return;
   
   kfree(vnode->name);
