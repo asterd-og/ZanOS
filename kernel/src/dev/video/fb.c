@@ -7,6 +7,7 @@
 vfs_node* fb_node;
 
 i32 fb_write(struct vfs_node* vnode, u8* buffer, u32 count) {
+  (void)vnode;
   memcpy(framebuffer->address, buffer, count);
   return count;
 }

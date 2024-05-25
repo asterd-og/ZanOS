@@ -4,7 +4,7 @@
 #include <mm/kmalloc.h>
 #include <dev/dev.h>
 
-atomic_lock* ext2_lock;
+atomic_lock ext2_lock;
 
 i32 ext2_read(vfs_node* vnode, u8* buffer, u32 count) {
   if (!(vnode->type == VFS_FILE)) {
@@ -14,7 +14,7 @@ i32 ext2_read(vfs_node* vnode, u8* buffer, u32 count) {
   u32 ino_no = vnode->ino;
   ext2_inode* ino = (ext2_inode*)kmalloc(sizeof(ext2_inode));
   ext2_read_inode(root_fs, ino_no, ino);
-  ext2_read_inode_blocks(root_fs, ino, buffer);
+  ext2_read_inode_blocks(root_fs, ino, buffer, count);
   kfree(ino);
   unlock(&ext2_lock);
   return 0;
@@ -26,7 +26,7 @@ vfs_dirent* ext2_readdir(struct vfs_node* vnode, u32 index) {
   ext2_read_inode(root_fs, vnode->ino, ino);
   u8* buf = (u8*)kmalloc((ino->sector_count / 2) * root_fs->block_size);
   u8* _buf = buf;
-  ext2_read_inode_blocks(root_fs, ino, buf);
+  ext2_read_inode_blocks(root_fs, ino, buf, ino->size);
 
   ext2_dirent* dir = (ext2_dirent*)buf;
   u32 i = 0;
@@ -84,8 +84,7 @@ vfs_node* ext2_finddir(struct vfs_node* vnode, char* path) {
     node->type = VFS_FILE;
   else if (dir_inode->type_perms & EXT_DIRECTORY)
     node->type = VFS_DIRECTORY;
-  node->size = ALIGN_UP(dir_inode->size, root_fs->block_size); // To make sure it can read blocks
-  // Without interfering in other allocations.
+  node->size = dir_inode->size;
   node->ino = ino_no;
   node->read = ext2_read;
   node->readdir = ext2_readdir;

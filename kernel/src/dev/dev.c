@@ -8,6 +8,7 @@ vfs_node* devices[256];
 u32 dev_index = 0;
 
 vfs_dirent* dev_readdir(vfs_node* vnode, u32 index) {
+  (void)vnode;
   if (devices[index] == NULL)
     return NULL;
   
@@ -19,6 +20,7 @@ vfs_dirent* dev_readdir(vfs_node* vnode, u32 index) {
 }
 
 vfs_node* dev_finddir(vfs_node* vnode, char* path) {
+  (void)vnode;
   for (u32 i = 0; i < dev_index; i++)
     if (!strcmp(devices[i]->name, path))
       return devices[i];

@@ -1,7 +1,7 @@
 #include <lib/elf.h>
 #include <lib/libc.h>
 
-u64 elf_load(char* img, pagemap* pm) {
+u64 elf_load(u8* img, pagemap* pm) {
   elf_header* hdr = (elf_header*)img;
 
   if (hdr->ident[0] != 0x7f || hdr->ident[1] != 'E' ||

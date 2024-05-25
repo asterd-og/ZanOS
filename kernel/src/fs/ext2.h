@@ -110,7 +110,7 @@ typedef struct {
   u8* data;
 } ext2_cache;
 
-typedef struct {
+typedef struct ext2_fs {
   ext2_sb* sb;
   ext2_bgd* bgd_table;
   ext2_cache* block_cache;
@@ -120,15 +120,19 @@ typedef struct {
   u32 bgd_block;
   u32 inode_size;
   u32 block_cache_idx;
+
+  void(*read_block)(struct ext2_fs* fs, u32 block, void* buf, u32 count);
 } ext2_fs;
 
 extern ext2_fs* root_fs;
 
 u8 ext2_init();
 
+void ext2_read_block(ext2_fs* fs, u32 block, void* buf, u32 count);
+
 void ext2_read_inode(ext2_fs* fs, u32 inode, ext2_inode* in);
 u32 ext2_get_inode(ext2_fs* fs, ext2_inode* in, char* name);
-void ext2_read_inode_blocks(ext2_fs* fs, ext2_inode* in, u8* buf);
+void ext2_read_inode_blocks(ext2_fs* fs, ext2_inode* in, u8* buf, u32 count);
 u32 ext2_read_file(ext2_fs* fs, ext2_inode* in, char* name, u8* buf);
 
 i32 ext2_read(struct vfs_node* vnode, u8* buffer, u32 count);

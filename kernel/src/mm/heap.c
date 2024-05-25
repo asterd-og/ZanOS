@@ -17,9 +17,8 @@ void* heap_alloc(heap* h, u64 size) {
   lock(&h->hl);
   u64 pages = DIV_ROUND_UP(sizeof(heap_block) + size, PAGE_SIZE);
   void* buf = pmm_alloc(pages);
-  if (this_cpu() && h != kernel_heap) {
-    vmm_map_range(this_cpu()->pm, buf, buf, pages, PTE_PRESENT | PTE_WRITABLE);
-  }
+  if (this_cpu() && h != kernel_heap)
+    vmm_map_user_range(this_cpu()->pm, (uptr)buf, (uptr)buf, pages, PTE_PRESENT | PTE_WRITABLE | PTE_USER);
   if (h == kernel_heap)
     buf = HIGHER_HALF(buf);
   heap_block* block = (heap_block*)buf;
@@ -31,7 +30,7 @@ void* heap_alloc(heap* h, u64 size) {
   h->block_head->prev->next = block;
   h->block_head->prev = block;
   unlock(&h->hl);
-  return block+1;
+  return buf + sizeof(heap_block);
 }
 
 void heap_free(heap* h, void* ptr) {

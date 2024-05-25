@@ -1,9 +1,11 @@
 #include <sys/smp.h>
-#include <dev/char/serial.h>
 #include <sys/gdt.h>
 #include <sys/idt.h>
+#include <sys/user.h>
+#include <dev/char/serial.h>
 #include <mm/vmm.h>
 #include <mm/heap.h>
+#include <lib/lock.h>
 
 u32 bsp_lapic_id = 0;
 u64 smp_cpu_count = 0;
@@ -15,17 +17,17 @@ struct limine_smp_request smp_request = {
   .revision = 0
 };
 
+atomic_lock smp_lock;
+
 void smp_init_cpu(struct limine_smp_info* smp_info) {
+  lock(&smp_lock);
+
   gdt_init();
   idt_reinit();
   vmm_switch_pm_nocpu(vmm_kernel_pm);
 
-  while (smp_cpu_started < smp_info->lapic_id - 1)
-    __asm__ volatile ("pause");
-  
   void* stack = HIGHER_HALF(pmm_alloc(3)) + (3 * PAGE_SIZE);
   tss_list[smp_info->lapic_id].rsp[0] = (u64)stack;
-  write_kernel_gs(stack);
   
   cpu_info* c = (cpu_info*)kmalloc(sizeof(cpu_info));
   memset(c, 0, sizeof(cpu_info));
@@ -42,6 +44,8 @@ void smp_init_cpu(struct limine_smp_info* smp_info) {
 
   dprintf("smp_init_cpu(): CPU %ld started.\n", smp_info->lapic_id);
   smp_cpu_started++;
+
+  unlock(&smp_lock);
 
   while (true) {
     __asm__ volatile ("hlt");
@@ -65,7 +69,8 @@ void smp_init() {
   vmm_switch_pm(vmm_kernel_pm);
 
   for (u64 i = 0; i < smp_cpu_count; i++)
-    smp_response->cpus[i]->goto_address = smp_init_cpu;
+    if (smp_response->cpus[i]->lapic_id != bsp_lapic_id)
+      smp_response->cpus[i]->goto_address = smp_init_cpu;
   
   while (smp_cpu_started < smp_cpu_count - 1)
     __asm__ volatile ("nop");

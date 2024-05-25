@@ -6,5 +6,5 @@ void user_init() {
   star |= ((u64)0x28 << 32); // kernel seg base
   star |= ((u64)0x38 << 48); // user seg base
   wrmsr(IA32_STAR, star);
-  wrmsr(IA32_CSTAR + 1, 0x202); // No compatibility mode
+  wrmsr(IA32_CSTAR + 1, 0x202); // Clear the rflags bit
 }

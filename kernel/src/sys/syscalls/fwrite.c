@@ -9,6 +9,6 @@ u64 syscall_fwrite(syscall_args a) {
   file_descriptor* file = (file_descriptor*)a.arg4;
   if (!file) return -1;
   if (!(file->mode & FS_WRITE)) return -1;
-  i32 ret = vfs_write(file->vnode, ptr, size * nmemb);
+  i32 ret = vfs_write(file->vnode, (u8*)ptr, size * nmemb);
   return ret;
 }

@@ -7,8 +7,7 @@ void kheap_init() {
 }
 
 void* kmalloc(u64 size) {
-  void* ptr = heap_alloc(kernel_heap, size);
-  return ptr;
+  return heap_alloc(kernel_heap, size);
 }
 
 void kfree(void* ptr) {
@@ -16,5 +15,5 @@ void kfree(void* ptr) {
 }
 
 void* krealloc(void* ptr, u64 size) {
-  heap_realloc(kernel_heap, ptr, size);
+  return heap_realloc(kernel_heap, ptr, size);
 }

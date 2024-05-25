@@ -23,6 +23,9 @@
     "heap.h": "c",
     "malloc.h": "c",
     "syscall.h": "c",
-    "lapic.h": "c"
+    "lapic.h": "c",
+    "acpi.h": "c",
+    "tmpfs.h": "c",
+    "lock.h": "c"
   }
 }

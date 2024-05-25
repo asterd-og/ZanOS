@@ -9,6 +9,8 @@
 - ATA PIO Driver
 - EXT2 Driver (read-only only, write WIP)
 - VFS Driver (WIP)
+- User mode
+- ELF Loading
 
 # Screenshots
 ![ext2_vfs](https://github.com/asterd-og/ZanOS/blob/main/images/ext2_vfs.png?raw=true)

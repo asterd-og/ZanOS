@@ -21,6 +21,7 @@
 #include <dev/pit.h>
 #include <dev/tty.h>
 #include <dev/dev.h>
+#include <dev/pci.h>
 #include <dev/block/ata.h>
 #include <dev/char/keyboard.h>
 #include <dev/video/fb.h>
@@ -29,6 +30,7 @@
 #include <fs/ext2.h>
 #include <fs/vfs.h>
 #include <fs/fs.h>
+#include <fs/tmpfs.h>
 
 // See specification for further info.
 
@@ -78,12 +80,10 @@ void hcf() {
 }
 
 void kernel_task() {
-  sched_new_elf("/bin/shell", 1, 3, sched_create_argv(3, "Hello", "World!", "Argument"), true);
+  sched_new_elf("/bin/shell", 1, 3, sched_create_argv(3, "Hello", "World!", "Argument"));
   while (1) {
   }
 }
-
-// 
 
 // The following will be our kernel's entry point.
 // If renaming _start() to something else, make sure to change the
@@ -103,9 +103,6 @@ void _start(void) {
   hhdm_offset = hhdm_request.response->offset;
   framebuffer = framebuffer_request.response->framebuffers[0];
 
-  u32 defaultbg = 0x000000;
-  u32 defaultfg = 0xffffff;
-
   ft_ctx = flanterm_fb_init(
     NULL,
     NULL,
@@ -116,7 +113,7 @@ void _start(void) {
     framebuffer->blue_mask_size, framebuffer->blue_mask_shift,
     NULL,
     NULL, NULL,
-    &defaultbg, &defaultfg,
+    NULL, NULL,
     NULL, NULL,
     NULL, 0, 0, 1,
     0, 0,
@@ -130,7 +127,6 @@ void _start(void) {
   
   void* stack = HIGHER_HALF(pmm_alloc(3)) + (3 * PAGE_SIZE);
   tss_list[0].rsp[0] = (u64)stack;
-  write_kernel_gs(stack);
 
   kheap_init();
   dprintf("KHeap initialised.\n");
@@ -143,20 +139,20 @@ void _start(void) {
   ioapic_init();
   pit_init();
   smp_init();
+  user_init();
   lapic_calibrate_timer();
   sched_init();
   dprintf("_start(): Initialised scheduler.\n");
-  ata_init();
+  // ata_init();
   printf("\033[38;2;0;255;255mZanOS\033[0m Booted successfully with %ld cores.\n", smp_cpu_count);
-  ext2_init();
-  vfs_init();
-  dev_init();
-  keyboard_init();
-  tty_init();
-  fb_init();
-  user_init();
+  // ext2_init();
+  // vfs_init();
+  // dev_init();
+  // keyboard_init();
+  // tty_init();
+  // fb_init();
 
-  sched_new_task(kernel_task, 0, false);
+  tmpfs_init(get_mod_addr(0));
 
   irq_register(0x32 - 32, sched_schedule);
   lapic_send_all_int(bsp_lapic_id, 0x32); // Jumpstart the scheduler

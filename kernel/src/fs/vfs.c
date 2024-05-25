@@ -21,7 +21,7 @@ void vfs_init() {
 }
 
 i32 vfs_write(vfs_node* vnode, u8* buffer, u32 count) {
-  if (!vnode) return -1;
+  if (vnode) return -1;
   if (vnode->write)
     return vnode->write(vnode, buffer, count);
   return -1;
@@ -35,14 +35,14 @@ i32 vfs_read(vfs_node* vnode, u8* buffer, u32 count) {
 }
 
 vfs_dirent* vfs_readdir(vfs_node* vnode, u32 index) {
-  if (!vnode) return -1;
+  if (!vnode) return NULL;
   if (vnode->readdir && vnode->type == VFS_DIRECTORY)
     return vnode->readdir(vnode, index);
   return NULL;
 }
 
 vfs_node* vfs_finddir(vfs_node* vnode, char* path) {
-  if (!vnode) return -1;
+  if (!vnode) return NULL;
   if (vnode->finddir && vnode->type == VFS_DIRECTORY)
     return vnode->finddir(vnode, path);
   return NULL;

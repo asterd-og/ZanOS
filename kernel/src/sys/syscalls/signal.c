@@ -2,10 +2,10 @@
 #include <sched/signal.h>
 
 u64 syscall_signal(syscall_args a) {
-  signal_handler ret = sig_signal((int)a.arg1, (signal_handler)a.arg2);
-  return (u64)&ret;
+  sig_signal((u64)a.arg1, (signal_handler)a.arg2);
+  return 0;
 }
 
 u64 syscall_raise(syscall_args a) {
-  return (u64)sig_raise((int)a.arg1);
+  return (u64)sig_raise((u64)a.arg1);
 }

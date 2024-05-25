@@ -3,8 +3,8 @@
 #include <sched/sched.h>
 
 u64 syscall_fopen(syscall_args a) {
-  const char* pathname = (char*)a.arg1;
-  const char* mode = (char*)a.arg2;
+  char* pathname = (char*)a.arg1;
+  char* mode = (char*)a.arg2;
   task_ctrl* task = this_cpu()->task_current;
   if (task->fd_idx >= 256) return -1;
   u16 flag = 0;
@@ -31,5 +31,5 @@ u64 syscall_fopen(syscall_args a) {
   task->fds[fd] = fd_open(node, flag, fd);
   task->fd_idx++;
 
-  return &task->fds[fd];
+  return (u64)&task->fds[fd];
 }

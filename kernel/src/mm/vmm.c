@@ -124,7 +124,7 @@ void vmm_map_user_range(pagemap* pm, uptr vaddr, uptr paddr, u64 pages, u64 flag
 void* vmm_alloc(u64 pages, u64 flags) {
   void* pg = pmm_alloc(pages);
   if (!pg) return NULL;
-  for (int p = 0; p < pages; p++)
+  for (u64 p = 0; p < pages; p++)
     vmm_map(this_cpu()->pm, (uptr)pg + (p * PAGE_SIZE), (uptr)pg + (p * PAGE_SIZE), flags);
   return pg;
 }
@@ -132,6 +132,6 @@ void* vmm_alloc(u64 pages, u64 flags) {
 void vmm_free(void* ptr, u64 pages) {
   if (!ptr) return;
   pmm_free(ptr, pages);
-  for (int p = 0; p < pages; p++)
+  for (u64 p = 0; p < pages; p++)
     vmm_unmap(this_cpu()->pm, (uptr)ptr + (p * PAGE_SIZE));
 }

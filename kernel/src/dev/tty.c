@@ -1,12 +1,14 @@
 #include <dev/tty.h>
 #include <dev/dev.h>
 #include <mm/kmalloc.h>
+#include <lib/libc.h>
 #include <kernel.h>
 
 vfs_node* tty_node;
 
 i32 tty_write(struct vfs_node* vnode, u8* buffer, u32 count) {
-  flanterm_write(ft_ctx, buffer, count);
+  (void)vnode;
+  flanterm_write(ft_ctx, (const char*)buffer, count);
   return count;
 }
 

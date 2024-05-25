@@ -1,8 +1,9 @@
 #include <fs/ext2.h>
+#include <dev/char/serial.h>
 #include <dev/block/ata.h>
 #include <lib/printf.h>
-#include <mm/kmalloc.h>
 #include <lib/libc.h>
+#include <mm/kmalloc.h>
 
 // I'm basing myself off https://www.nongnu.org/ext2-doc/ext2.pdf (awesome doc)
 
@@ -19,21 +20,28 @@ int ext2_get_cache(ext2_fs* fs, u32 block) {
   return -1;
 }
 
-void ext2_read_block(ext2_fs* fs, u32 block, void* buf) {
+void ext2_ata_read_block(ext2_fs* fs, u32 block, void* buf, u32 count) {
   int cache_num = ext2_get_cache(fs, block);
   if (cache_num == -1) {
-    ata_read(block * (fs->block_size / 512), buf, (fs->block_size / 512));
+    u8* disk_buf = kmalloc(fs->block_size);
+    ata_read(block * (fs->block_size / 512), disk_buf, (fs->block_size / 512));
+    memcpy(buf, disk_buf, count);
+    kfree(disk_buf);
 
     if (fs->block_cache_idx < 0x1024) {
       // TODO: Remember to update this whenever write is implemented
       fs->block_cache[fs->block_cache_idx].block = block;
       fs->block_cache[fs->block_cache_idx].data = (u8*)kmalloc(fs->block_size);
-      memcpy(fs->block_cache[fs->block_cache_idx].data, buf, fs->block_size);
+      memcpy(fs->block_cache[fs->block_cache_idx].data, buf, count);
       fs->block_cache_idx++;
     }
     return;
   }
-  memcpy(buf, fs->block_cache[cache_num].data, fs->block_size);
+  memcpy(buf, fs->block_cache[cache_num].data, count);
+}
+
+void ext2_read_block(ext2_fs* fs, u32 block, void* buf, u32 count) {
+  fs->read_block(fs, block, buf, count);
 }
 
 void ext2_read_inode(ext2_fs* fs, u32 inode, ext2_inode* in) {
@@ -42,7 +50,7 @@ void ext2_read_inode(ext2_fs* fs, u32 inode, ext2_inode* in) {
   u32 bg_idx = (idx * fs->inode_size) / fs->block_size;
 
   u8* buf = (u8*)kmalloc(fs->block_size);
-  ext2_read_block(fs, fs->bgd_table[bg].inode_table_block + bg_idx, buf);
+  ext2_read_block(fs, fs->bgd_table[bg].inode_table_block + bg_idx, buf, fs->block_size);
   // now we have a "list" of inodes, we need to index our inode
   memcpy(in, (buf + (idx % (fs->block_size / fs->inode_size)) * fs->inode_size), fs->inode_size);
   kfree(buf);
@@ -53,11 +61,7 @@ u32 ext2_get_inode(ext2_fs* fs, ext2_inode* in, char* name) {
   u8* buf = (u8*)kmalloc((in->sector_count / 2) * fs->block_size);
   u8* _buf = buf;
 
-  for (int i = 0; i < 12; i++) {
-    u32 block = in->direct_block_ptr[i];
-    if (block == 0) break;
-    ext2_read_block(fs, block, buf + (i * fs->block_size));
-  }
+  ext2_read_inode_blocks(fs, in, buf, in->size);
 
   int plen = strlen(name);
 
@@ -74,29 +78,37 @@ u32 ext2_get_inode(ext2_fs* fs, ext2_inode* in, char* name) {
   return 0;
 }
 
-void ext2_read_singly_blocks(ext2_fs* fs, u32 singly_block_id, u8* buf) {
+void ext2_read_singly_blocks(ext2_fs* fs, u32 singly_block_id, u8* buf, u32 count) {
   u32* blocks = (u32*)kmalloc(fs->block_size);
   u32 block_count = fs->block_size / 4; // on 1KB Blocks, 13 - 268 (or 256 blocks)
-  ext2_read_block(fs, singly_block_id, blocks);
-  for (int i = 0; i < block_count; i++) {
+  // Think about it this way: it's 1024 (block size) divided by 4 bytes (32 bit values)
+  // and each 4 bytes is a block num
+  u32 count_block = DIV_ROUND_UP(count, fs->block_size);
+  ext2_read_block(fs, singly_block_id, blocks, fs->block_size);
+  u32 remaining = count;
+  for (u32 i = 0; i < count_block; i++) {
+    if (i == block_count) break;
     if (blocks[i] == 0) break;
-    ext2_read_block(fs, blocks[i], buf + (i * fs->block_size));
+    ext2_read_block(fs, blocks[i], buf + (i * fs->block_size), (remaining > fs->block_size ? fs->block_size : remaining));
+    remaining -= fs->block_size;
   }
   kfree(blocks);
 }
 
-void ext2_read_doubly_blocks(ext2_fs* fs, u32 doubly_block_id, u8* buf) {
-}
-
-void ext2_read_inode_blocks(ext2_fs* fs, ext2_inode* in, u8* buf) {
+void ext2_read_inode_blocks(ext2_fs* fs, ext2_inode* in, u8* buf, u32 count) {
   // TODO: Read singly, doubly and triply linked blocks
-  for (int i = 0; i < 12; i++) {
+  u32 remaining = count;
+  u32 blocks = DIV_ROUND_UP(count, fs->block_size);
+  for (u32 i = 0; i < (blocks > 12 ? 12 : blocks); i++) {
     u32 block = in->direct_block_ptr[i];
     if (block == 0) break;
-    ext2_read_block(fs, block, buf + (i * fs->block_size));
+    ext2_read_block(fs, block, buf + (i * fs->block_size), (remaining > fs->block_size ? fs->block_size : remaining));
+    remaining -= fs->block_size;
   }
-  if (in->singly_block_ptr != 0) {
-    ext2_read_singly_blocks(fs, in->singly_block_ptr, buf + (12 * fs->block_size));
+  if (blocks > 12) {
+    if (in->singly_block_ptr != 0) {
+      ext2_read_singly_blocks(fs, in->singly_block_ptr, buf + (12 * fs->block_size), remaining);
+    }
   }
 }
 
@@ -106,6 +118,8 @@ u8 ext2_init() {
   ata_read(2, (u8*)sb, 2);
   if (sb->signature != 0xef53)
     return 1;
+
+  fs->read_block = ext2_ata_read_block;
   
   fs->sb = sb;
   fs->block_size = (1024 << sb->log2_block);
@@ -115,7 +129,7 @@ u8 ext2_init() {
   if (!fs->bgd_count) fs->bgd_count = 1;
   fs->bgd_block = sb->block_num + 1; // First block after sb
   fs->bgd_table = (ext2_bgd*)kmalloc(sizeof(ext2_bgd) * fs->bgd_count);
-  ext2_read_block(fs, fs->bgd_block, fs->bgd_table);
+  ext2_read_block(fs, fs->bgd_block, fs->bgd_table, fs->block_size);
   fs->inode_size = (sb->major_ver == 1 ? sb->inode_size : fs->inode_size);
 
   u32 inode = 2; // root dir

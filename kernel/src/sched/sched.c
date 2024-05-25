@@ -19,10 +19,10 @@ void sched_idle() {
 void sched_init() {
   cpu_info* cpu = this_cpu();
   cpu->task_idx = -1;
-  sched_new_task(sched_idle, cpu->lapic_id, false);
+  sched_new_task(sched_idle, cpu->lapic_id, true);
 }
 
-task_ctrl* sched_new_task(void* entry, u64 cpu, bool user) {
+task_ctrl* sched_new_task(void* entry, u64 cpu, bool idle) {
   lock(&sched_lock);
 
   cpu_info* c = get_cpu(cpu);
@@ -30,24 +30,20 @@ task_ctrl* sched_new_task(void* entry, u64 cpu, bool user) {
   task_ctrl* task = (task_ctrl*)kmalloc(sizeof(task_ctrl));
   memset(task, 0, sizeof(task_ctrl));
 
-  task->user = user;
+  task->idle = idle;
+  task->user = false;
 
   char* stack = (char*)kmalloc(2 * PAGE_SIZE);
   task->ctx.rsp = (u64)(stack + (2 * PAGE_SIZE));
   task->ctx.rip = (u64)entry;
-  task->ctx.cs  = (user ? 0x43 : 0x28);
-  task->ctx.ss  = (user ? 0x3B : 0x30);
+  task->ctx.cs  = 0x28;
+  task->ctx.ss  = 0x30;
   task->ctx.rflags = 0x202;
 
   task->pm = vmm_new_pm();
   task->heap_area = heap_create();
 
-  if (user) {
-    vmm_map_user(task->pm, stack, PHYSICAL(stack), PTE_PRESENT | PTE_WRITABLE | PTE_USER);
-    vmm_map_user(task->pm, entry, entry, PTE_PRESENT | PTE_WRITABLE | PTE_USER);
-  }
-
-  task->id = sched_glob_id++;
+  task->id = (idle ? 0 : sched_glob_id++);
   task->cpu = cpu;
   task->stack_base = (u64)stack;
   task->sleeping_time = 0;
@@ -79,7 +75,7 @@ char** sched_create_argv(int argc, ...) {
   return argv;
 }
 
-task_ctrl* sched_new_elf(char* path, u64 cpu, int argc, char** argv, bool user) {
+task_ctrl* sched_new_elf(char* path, u64 cpu, int argc, char** argv) {
   lock(&sched_lock);
 
   cpu_info* c = get_cpu(cpu);
@@ -90,6 +86,9 @@ task_ctrl* sched_new_elf(char* path, u64 cpu, int argc, char** argv, bool user) 
   task->pm = vmm_new_pm();
   task->heap_area = heap_create();
 
+  task->idle = false;
+  task->idle = true;
+
   vfs_node* node = vfs_open(vfs_root, path);
   u32 size = node->size;
   u8* img = (u8*)kmalloc(size);
@@ -98,7 +97,7 @@ task_ctrl* sched_new_elf(char* path, u64 cpu, int argc, char** argv, bool user) 
   dprintf("sched_new_elf(): Elf read.\n");
   u64 entry = elf_load(img, task->pm);
   dprintf("sched_new_elf(): Elf loaded.\n");
-  if (entry == -1) {
+  if (entry == (u64)-1) {
     dprintf("sched_new_elf(): Failed to load elf.\n");
     kfree(task);
     return NULL;
@@ -107,26 +106,23 @@ task_ctrl* sched_new_elf(char* path, u64 cpu, int argc, char** argv, bool user) 
   char* stack = (char*)pmm_alloc(3);
   task->ctx.rsp = (u64)(stack + (3 * PAGE_SIZE));
   task->ctx.rip = (u64)entry;
-  task->ctx.cs  = (user ? 0x43 : 0x28);
-  task->ctx.ss  = (user ? 0x3B : 0x30);
+  task->ctx.cs  = 0x43;
+  task->ctx.ss  = 0x3B;
   task->ctx.rflags = 0x202;
 
-  vmm_map_user_range(task->pm, stack, stack, 3, PTE_PRESENT | PTE_WRITABLE | PTE_USER);
+  vmm_map_user_range(task->pm, (uptr)stack, (uptr)stack, 3, PTE_PRESENT | PTE_WRITABLE | PTE_USER);
 
   task->ctx.rdi = argc + 1; // argc
   argv[0] = node->name;
-  task->ctx.rsi = argv;
+  task->ctx.rsi = (u64)argv;
 
-  vmm_map_user_range(task->pm, argv, PHYSICAL(argv), DIV_ROUND_UP(sizeof(argv), PAGE_SIZE), PTE_PRESENT | PTE_WRITABLE | PTE_USER);
+  vmm_map_user_range(task->pm, (uptr)argv, (uptr)PHYSICAL(argv), DIV_ROUND_UP(sizeof(argv), PAGE_SIZE), PTE_PRESENT | PTE_WRITABLE | PTE_USER);
 
-  task->id = sched_glob_id++;
+  task->id = ++sched_glob_id;
   task->cpu = cpu;
   task->stack_base = (u64)stack;
   task->sleeping_time = 0;
   task->state = SCHED_RUNNING;
-
-  task->gs_base = task->ctx.rsp;
-  task->kernel_gs = (u64)(kmalloc(3 * PAGE_SIZE) + (3 * PAGE_SIZE));
 
   task->current_dir = vfs_root;
 
@@ -164,9 +160,8 @@ void sched_schedule(registers* r) {
 
   cpu_info* c = this_cpu();
 
-  if (c->task_current != NULL) {
+  if (c->task_current != NULL)
     c->task_current->ctx = *r;
-  }
   
   c->task_current = sched_get_next_task(c);
   vmm_switch_pm(c->task_current->pm);

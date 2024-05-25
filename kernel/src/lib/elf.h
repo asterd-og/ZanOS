@@ -31,4 +31,4 @@ typedef struct {
   u64 align;
 } elf_ph;
 
-u64 elf_load(char* img, pagemap* pm);
+u64 elf_load(u8* img, pagemap* pm);

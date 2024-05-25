@@ -62,7 +62,8 @@ void keyboard_handler(registers* regs) {
   lapic_eoi();
 }
 
-u32 keyboard_read(struct vfs_node* vnode, u8* buffer, u32 count) {
+i32 keyboard_read(struct vfs_node* vnode, u8* buffer, u32 count) {
+  (void)vnode; (void)count;
   char c = keyboard_char;
   keyboard_event ev;
   ev.type = 1; // key

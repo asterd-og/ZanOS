@@ -48,7 +48,26 @@ run-normal: $(IMAGE_NAME).iso
 
 .PHONY: run-kvm
 run-kvm: $(IMAGE_NAME).iso
-	qemu-system-x86_64 -debugcon stdio -m 2G -cdrom $(IMAGE_NAME).iso -boot d -enable-kvm -smp 2 -drive file="disk.img",format=raw -no-reboot -no-shutdown
+	qemu-system-x86_64 -debugcon stdio \
+	-m 2G \
+	-cdrom $(IMAGE_NAME).iso \
+	-boot d \
+	-enable-kvm \
+	-smp 2 \
+	-drive id=disk,file=disk.img,if=none \
+	-device ahci,id=ahci \
+	-device ide-hd,drive=disk,bus=ahci.0 \
+	-no-reboot -no-shutdown
+
+run-ata: $(IMAGE_NAME).iso
+	qemu-system-x86_64 -debugcon stdio \
+	-m 2G \
+	-cdrom $(IMAGE_NAME).iso \
+	-boot d \
+	-enable-kvm \
+	-smp 2 \
+	-drive file="disk.img",format=raw \
+	-no-reboot -no-shutdown
 
 .PHONY: run-kvm-rtl8139
 run-kvm-rtl8139: $(IMAGE_NAME).iso
@@ -94,7 +113,7 @@ $(IMAGE_NAME).iso: limine kernel
 	rm -rf iso_root
 	mkdir -p iso_root
 	cp -v kernel/bin/kernel \
-		limine.cfg limine/limine-bios.sys limine/limine-bios-cd.bin limine/limine-uefi-cd.bin iso_root/
+		limine.cfg tmpfs limine/limine-bios.sys limine/limine-bios-cd.bin limine/limine-uefi-cd.bin iso_root/
 	mkdir -p iso_root/EFI/BOOT
 	cp -v limine/BOOTX64.EFI iso_root/EFI/BOOT/
 	cp -v limine/BOOTIA32.EFI iso_root/EFI/BOOT/

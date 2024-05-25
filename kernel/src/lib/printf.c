@@ -284,14 +284,6 @@ static inline int get_sign_bit(double x)
   return (int) (get_bit_access(x).U >> (DOUBLE_SIZE_IN_BITS - 1));
 }
 
-static inline int get_exp2(double_with_bit_access x)
-{
-  // The exponent in an IEEE-754 floating-point number occupies a contiguous
-  // sequence of bits (e.g. 52..62 for 64-bit doubles), but with a non-trivial representation: An
-  // unsigned offset from some negative value (with the extremal offset values reserved for
-  // special use).
-  return (int)((x.U >> DOUBLE_STORED_MANTISSA_BITS ) & DOUBLE_EXPONENT_MASK) - DOUBLE_BASE_EXPONENT;
-}
 #define PRINTF_ABS(_x) ( (_x) > 0 ? (_x) : -(_x) )
 
 #endif // (PRINTF_SUPPORT_DECIMAL_SPECIFIERS || PRINTF_SUPPORT_EXPONENTIAL_SPECIFIERS)
