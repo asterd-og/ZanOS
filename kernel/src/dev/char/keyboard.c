@@ -64,15 +64,14 @@ void keyboard_handler(registers* regs) {
 }
 
 i32 keyboard_read(struct vfs_node* vnode, u8* buffer, u32 count) {
-  (void)vnode; (void)count;
+  (void)vnode;
   char c = keyboard_char;
-  keyboard_event ev;
-  ev.type = 1; // key
-  ev.value = 1; // pressed
-  ev.code = c;
+  keyboard_event* ev = (keyboard_event*)buffer;
+  ev->type = 1; // key
+  ev->value = 1; // pressed
+  ev->code = c;
   keyboard_char = 0;
-  memcpy(buffer, &ev, sizeof(keyboard_event));
-  return sizeof(keyboard_event);
+  return count;
 }
 
 void keyboard_init() {

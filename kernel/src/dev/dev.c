@@ -1,5 +1,6 @@
 #include <dev/dev.h>
 #include <mm/kmalloc.h>
+#include <mm/malloc.h>
 #include <lib/libc.h>
 
 vfs_node* vfs_dev;
@@ -12,8 +13,10 @@ vfs_dirent* dev_readdir(vfs_node* vnode, u32 index) {
   if (devices[index] == NULL)
     return NULL;
   
-  vfs_dirent* dirent = (vfs_dirent*)kmalloc(sizeof(vfs_dirent));
-  dirent->name = devices[index]->name;
+  vfs_dirent* dirent = (vfs_dirent*)malloc(sizeof(vfs_dirent));
+  int len = strlen(devices[index]->name);
+  dirent->name = (char*)malloc(len);
+  memcpy(dirent->name, devices[index]->name, len);
   dirent->ino = devices[index]->ino;
 
   return dirent;

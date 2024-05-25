@@ -19,3 +19,11 @@ u64 syscall_opendir(syscall_args a) {
   
   return (u64)dir;
 }
+
+u64 syscall_closedir(syscall_args a) {
+  DIR* dir = (DIR*)a.arg1;
+  if (!dir) return (u64)-1;
+  vfs_destroy(dir->node);
+  free(dir);
+  return 0;
+}

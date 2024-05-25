@@ -25,11 +25,9 @@ u64 syscall_malloc(syscall_args a);
 u64 syscall_free(syscall_args a);
 u64 syscall_realloc(syscall_args a);
 
-u64 syscall_fopen(syscall_args a);
-u64 syscall_fread(syscall_args a);
-u64 syscall_fwrite(syscall_args a);
-u64 syscall_fclose(syscall_args a);
+u64 syscall_getsz(syscall_args a);
 
+u64 syscall_open(syscall_args a);
 u64 syscall_read(syscall_args a);
 u64 syscall_write(syscall_args a);
 u64 syscall_close(syscall_args a);
@@ -39,3 +37,4 @@ u64 syscall_chdir(syscall_args a);
 
 u64 syscall_opendir(syscall_args a);
 u64 syscall_readdir(syscall_args a);
+u64 syscall_closedir(syscall_args a);

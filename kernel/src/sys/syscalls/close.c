@@ -1,6 +1,7 @@
 #include <sys/syscall.h>
 #include <sys/smp.h>
 #include <sched/sched.h>
+#include <mm/malloc.h>
 
 u64 syscall_close(syscall_args a) {
   u64 fd = (u64)a.arg1;
@@ -10,7 +11,7 @@ u64 syscall_close(syscall_args a) {
     return (u64)-1;
   
   vfs_destroy(task->fds[fd].vnode);
-  memset(task->fds + fd, 0, sizeof(file_descriptor));
+  task->fds[fd] = (file_descriptor){0, 0, 0, 0};
 
   return 0;
 }

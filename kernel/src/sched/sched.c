@@ -51,9 +51,6 @@ task_ctrl* sched_new_task(void* entry, u64 cpu, bool idle) {
   task->state = SCHED_RUNNING;
 
   task->current_dir = vfs_root;
-  task->fds[1] = fd_open(tty_node, FS_READ | FS_WRITE, 1); // stdout
-  task->fds[2] = fd_open(tty_node, FS_READ | FS_WRITE, 2); // stderr
-  task->fd_idx = 3;
 
   c->task_list[c->task_count++] = task;
 

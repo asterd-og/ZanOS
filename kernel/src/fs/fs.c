@@ -3,6 +3,7 @@
 #include <lib/printf.h>
 #include <sched/sched.h>
 #include <sys/smp.h>
+#include <mm/malloc.h>
 
 file_descriptor fd_open(vfs_node* vnode, u16 mode, u16 fd_num) {
   file_descriptor fd;

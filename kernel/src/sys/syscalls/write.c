@@ -1,6 +1,7 @@
 #include <sys/syscall.h>
 #include <sys/smp.h>
 #include <sched/sched.h>
+#include <mm/malloc.h>
 
 u64 syscall_write(syscall_args a) {
   u64 fd = (u64)a.arg1;
@@ -10,6 +11,6 @@ u64 syscall_write(syscall_args a) {
   
   if (!task->fds[fd].vnode)
     return (u64)-1;
-  
+    
   return vfs_write(task->fds[fd].vnode, buffer, size);
 }
