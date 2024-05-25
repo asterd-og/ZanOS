@@ -2,6 +2,7 @@
 #include <fs/ext2.h>
 #include <lib/libc.h>
 #include <mm/kmalloc.h>
+#include <mm/malloc.h>
 #include <dev/char/serial.h>
 
 ext2_fs* root_tmpfs = NULL;
@@ -43,9 +44,9 @@ vfs_dirent* tmpfs_readdir(struct vfs_node* vnode, u32 index) {
         kfree(_buf);
         return NULL;
       }
-      vfs_dirent* dirent = (vfs_dirent*)kmalloc(sizeof(vfs_dirent));
+      vfs_dirent* dirent = (vfs_dirent*)malloc(sizeof(vfs_dirent));
       dirent->ino = dir->inode;
-      dirent->name = (char*)kmalloc(dir->name_len);
+      dirent->name = (char*)malloc(dir->name_len);
       memcpy(dirent->name, dir->name, dir->name_len);
       kfree(_buf);
       return dirent;
@@ -122,6 +123,8 @@ u8 tmpfs_init(u8* tmpfs_addr) {
   // Setup vfs node
 
   vfs_tmpfs = (vfs_node*)kmalloc(sizeof(vfs_node));
+  vfs_tmpfs->parent = vfs_root;
+  vfs_tmpfs->open = true;
   vfs_tmpfs->name = (char*)kmalloc(6);
   memcpy(vfs_tmpfs->name, "tmpfs", 6);
   vfs_tmpfs->ino = 2;
