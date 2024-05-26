@@ -95,6 +95,28 @@ void ext2_read_singly_blocks(ext2_fs* fs, u32 singly_block_id, u8* buf, u32 coun
   kfree(blocks);
 }
 
+void ext2_read_doubly_blocks(ext2_fs* fs, u32 doubly_block_id, u8* buf, u32 count) {
+  // A block containing an array of indirect block IDs
+  // with each of those indirect blocks containing an array of blocks containing the data
+  u32* blocks = (u32*)kmalloc(fs->block_size);
+  u32 block_count = fs->block_size / 4; // on 1KB Blocks, 268 - 65804 (or 65536 blocks)
+
+  u32 count_block = DIV_ROUND_UP(count, fs->block_size);
+  ext2_read_block(fs, doubly_block_id, blocks, fs->block_size);
+  u32 remaining = count;
+  u32 rem_limit = fs->block_size * fs->block_size / 4;
+  // rem_limit is the total of bytes in a singly linked list, divide that by the block size
+  // and you get the amount of blocks in a singly linked list.
+
+  for (u32 i = 0; i < count_block; i++) {
+    if (i == block_count) break;
+    if (blocks[i] == 0) break;
+    ext2_read_singly_blocks(fs, blocks[i], buf + (i * rem_limit), (remaining > rem_limit ? rem_limit : remaining));
+    remaining -= rem_limit;
+  }
+  kfree(blocks);
+}
+
 void ext2_read_inode_blocks(ext2_fs* fs, ext2_inode* in, u8* buf, u32 count) {
   // TODO: Read singly, doubly and triply linked blocks
   u32 remaining = count;
@@ -108,6 +130,12 @@ void ext2_read_inode_blocks(ext2_fs* fs, ext2_inode* in, u8* buf, u32 count) {
   if (blocks > 12) {
     if (in->singly_block_ptr != 0) {
       ext2_read_singly_blocks(fs, in->singly_block_ptr, buf + (12 * fs->block_size), remaining);
+    }
+  }
+  if (blocks > 265) {
+    if (in->doubly_block_ptr != 0) {
+      remaining -= fs->block_size * fs->block_size / 4;
+      ext2_read_doubly_blocks(fs, in->singly_block_ptr, buf + (12 * fs->block_size) + (fs->block_size * fs->block_size / 4), remaining);
     }
   }
 }
