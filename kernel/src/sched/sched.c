@@ -8,6 +8,7 @@
 #include <dev/tty.h>
 #include <dev/char/keyboard.h>
 #include <fs/vfs.h>
+#include <mm/malloc.h>
 
 u64 sched_glob_id = 0;
 atomic_lock sched_lock;
@@ -112,9 +113,26 @@ task_ctrl* sched_new_elf(char* path, u64 cpu, int argc, char** argv) {
 
   task->ctx.rdi = argc + 1; // argc
   argv[0] = node->name;
-  task->ctx.rsi = (u64)argv;
 
-  vmm_map_user_range(task->pm, (uptr)argv, (uptr)PHYSICAL(argv), DIV_ROUND_UP(sizeof(argv), PAGE_SIZE), PTE_PRESENT | PTE_WRITABLE | PTE_USER);
+  pagemap* pm = this_cpu()->pm;
+  vmm_switch_pm(task->pm);
+  char** _argv = (char**)malloc((argc + 1) * sizeof(char*));
+  for (int i = 0; i < argc + 1; i++) {
+    char* arg = argv[i];
+    int arg_len = strlen(arg) + 1;
+    _argv[i] = (char*)malloc(arg_len);
+    memcpy(_argv[i], arg, arg_len);
+    kfree(argv[i]);
+  }
+  vmm_switch_pm(pm);
+  kfree(argv);
+
+  task->ctx.rsi = (u64)_argv;
+
+  // vmm_map_user_range(task->pm, (uptr)argv, (uptr)argv, DIV_ROUND_UP(sizeof(argv), PAGE_SIZE), PTE_PRESENT | PTE_WRITABLE | PTE_USER);
+  // for (int i = 0; i < argc; i++) {
+    // vmm_map_user_range(task->pm, (uptr)argv[i], (uptr)PHYSICAL(argv[i]), DIV_ROUND_UP(strlen(argv[i]), PAGE_SIZE), PTE_USER | PTE_WRITABLE | PTE_USER);
+  // }
 
   task->id = ++sched_glob_id;
   task->cpu = cpu;

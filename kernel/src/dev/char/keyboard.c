@@ -1,9 +1,11 @@
 #include <dev/char/keyboard.h>
 #include <dev/char/keyboard_map.h>
+#include <dev/char/serial.h>
 #include <dev/lapic.h>
 #include <sys/idt.h>
 #include <sys/ports.h>
 #include <lib/lock.h>
+#include <lib/fifo.h>
 #include <mm/kmalloc.h>
 
 bool keyboard_pressed = false;
@@ -11,8 +13,14 @@ bool keyboard_pressed = false;
 u32 keyboard_char = '\0';
 bool keyboard_caps = false;
 bool keyboard_shift = false;
+u8 keyboard_state = 0; // 0 = nothing, 1 = pressed 2 = released
+
+fifo* keyboard_fifo;
 
 vfs_node* kb_node = NULL;
+
+// TODO: Make a FIFO of keyboard event, when a fread occurs
+// just read from that
 
 atomic_lock kb_lock;
 
@@ -23,22 +31,31 @@ void keyboard_handle_key(u8 key) {
     case 0x2a:
       // Shift
       keyboard_shift = true;
+      keyboard_state = 1;
       break;
     case 0xaa:
       keyboard_shift = false;
+      keyboard_state = 2;
       break;
     case 0x3a:
       // Caps
       keyboard_caps = !keyboard_caps;
+      keyboard_state = (keyboard_state == 0 ? 1 : 2);
       break;
     default:
       // Letter
       if (!(key & 0x80)) {
-        keyboard_pressed = true;
-        if (keyboard_shift) keyboard_char = kb_map_keys_shift[key];
-        else if (keyboard_caps) keyboard_char = kb_map_keys_caps[key];
-        else keyboard_char = kb_map_keys[key];
+        keyboard_state = 1;
+      } else {
+        keyboard_state = 2;
+        key -= 0x80;
       }
+      if (keyboard_shift) keyboard_char = kb_map_keys_shift[key];
+      else if (keyboard_caps) keyboard_char = kb_map_keys_caps[key];
+      else keyboard_char = kb_map_keys[key];
+      keyboard_event* ev = (keyboard_event*)kmalloc(sizeof(keyboard_event));
+      ev->type = 1; ev->value = keyboard_state; ev->code = keyboard_char;
+      fifo_push(keyboard_fifo, (u64*)ev);
       break;
   }
   unlock(&kb_lock);
@@ -64,17 +81,20 @@ void keyboard_handler(registers* regs) {
 }
 
 i32 keyboard_read(struct vfs_node* vnode, u8* buffer, u32 count) {
-  (void)vnode;
-  char c = keyboard_char;
+  (void)vnode; (void)count;
   keyboard_event* ev = (keyboard_event*)buffer;
-  ev->type = 1; // key
-  ev->value = 1; // pressed
-  ev->code = c;
-  keyboard_char = 0;
-  return count;
+  keyboard_event* info = (keyboard_event*)fifo_pop(keyboard_fifo);
+  if (info == NULL) {
+    ev->type = 0; ev->value = 0; ev->code = 0; return sizeof(keyboard_event);
+  }
+  ev->type = info->type; // key
+  ev->value = info->value; // pressed
+  ev->code = info->code;
+  return sizeof(keyboard_event);
 }
 
 void keyboard_init() {
+  keyboard_fifo = fifo_create(256);
   kb_node = (vfs_node*)kmalloc(sizeof(vfs_node));
   kb_node->name = (char*)kmalloc(9);
   memcpy(kb_node->name, "keyboard", 9);
