@@ -12,5 +12,6 @@ u64 syscall_read(syscall_args a) {
   if (!task->fds[fd].vnode)
     return -1;
   
-  return vfs_read(task->fds[fd].vnode, buffer, size);
+  int inc = vfs_read(task->fds[fd].vnode, buffer, size);
+  return inc;
 }

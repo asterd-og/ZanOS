@@ -11,11 +11,11 @@ gdt_table def_table = {
   0x00cf9a000000ffff, // 0x18 32 bit code
   0x00cf93000000ffff, // 0x20 32 bit data
 
-  0x00af9b000000ffff, // 0x28 64 bit code
-  0x00af93000000ffff, // 0x30 64 bit data
+  0x00af9b000000ffff, // 0x28 64 bit code cs
+  0x00af93000000ffff, // 0x30 64 bit data ss
 
-  0x00aff3000000ffff, // 0x38 data
-  0x00affb000000ffff, // 0x40 user mode code
+  0x00aff3000000ffff, // 0x38 data ss
+  0x00affb000000ffff, // 0x40 user mode code cs
   },
   {
   }

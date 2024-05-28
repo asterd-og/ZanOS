@@ -53,9 +53,9 @@ void keyboard_handle_key(u8 key) {
       if (keyboard_shift) keyboard_char = kb_map_keys_shift[key];
       else if (keyboard_caps) keyboard_char = kb_map_keys_caps[key];
       else keyboard_char = kb_map_keys[key];
-      keyboard_event* ev = (keyboard_event*)kmalloc(sizeof(keyboard_event));
-      ev->type = 1; ev->value = keyboard_state; ev->code = keyboard_char;
-      fifo_push(keyboard_fifo, (u64*)ev);
+      keyboard_event ev;
+      ev.type = 1; ev.value = keyboard_state; ev.code = keyboard_char;
+      fifo_push(keyboard_fifo, &ev);
       break;
   }
   unlock(&kb_lock);
@@ -82,19 +82,12 @@ void keyboard_handler(registers* regs) {
 
 i32 keyboard_read(struct vfs_node* vnode, u8* buffer, u32 count) {
   (void)vnode; (void)count;
-  keyboard_event* ev = (keyboard_event*)buffer;
-  keyboard_event* info = (keyboard_event*)fifo_pop(keyboard_fifo);
-  if (info == NULL) {
-    ev->type = 0; ev->value = 0; ev->code = 0; return sizeof(keyboard_event);
-  }
-  ev->type = info->type; // key
-  ev->value = info->value; // pressed
-  ev->code = info->code;
+  fifo_pop(keyboard_fifo, buffer);
   return sizeof(keyboard_event);
 }
 
 void keyboard_init() {
-  keyboard_fifo = fifo_create(256);
+  keyboard_fifo = fifo_create(256, sizeof(keyboard_event));
   kb_node = (vfs_node*)kmalloc(sizeof(vfs_node));
   kb_node->name = (char*)kmalloc(9);
   memcpy(kb_node->name, "keyboard", 9);

@@ -1,5 +1,6 @@
 #include <dev/tty.h>
 #include <dev/dev.h>
+#include <dev/char/serial.h>
 #include <mm/kmalloc.h>
 #include <lib/libc.h>
 #include <kernel.h>

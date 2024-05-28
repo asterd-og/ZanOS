@@ -80,7 +80,7 @@ void hcf() {
 }
 
 void kernel_task() {
-  sched_new_elf("/tmpfs/bin/unes", 1, 1, sched_create_argv(1, "/tmpfs/tetris.nes"));
+  sched_new_elf("/bin/shell", 1, 1, sched_create_argv(1, ""));
   while (1) {
   }
 }

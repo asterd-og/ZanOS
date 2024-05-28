@@ -1,5 +1,6 @@
 #include <lib/elf.h>
 #include <lib/libc.h>
+#include <sys/smp.h>
 
 u64 elf_load(u8* img, pagemap* pm) {
   elf_header* hdr = (elf_header*)img;
@@ -18,16 +19,14 @@ u64 elf_load(u8* img, pagemap* pm) {
       // Elf load
       uptr seg_start = ALIGN_DOWN(phdr->vaddr, PAGE_SIZE);
       uptr seg_end = ALIGN_UP(seg_start + phdr->mem_size, PAGE_SIZE);
-      void* seg = pmm_alloc(DIV_ROUND_UP(phdr->mem_size, PAGE_SIZE));
-      u64 j = 0;
-      for (uptr vaddr = seg_start; vaddr <= seg_end; vaddr += PAGE_SIZE) {
-        vmm_map_user(pm, vaddr, (uptr)seg + (j * PAGE_SIZE), PTE_PRESENT | PTE_WRITABLE | PTE_USER);
-        j++;
-      }
+      size_t seg_size = seg_end - seg_start;
+      void* seg = pmm_alloc(seg_size / PAGE_SIZE);
+      vmm_map_user_range(pm, seg_start, (uptr)seg, seg_size, PTE_PRESENT | PTE_WRITABLE | PTE_USER);
+      pagemap* old_pm = this_cpu()->pm;
       vmm_switch_pm(pm);
       memcpy((void*)phdr->vaddr, (void*)img + phdr->offset, phdr->file_size);
-      memset((void*)(phdr->vaddr + phdr->file_size), 0, phdr->mem_size - phdr->file_size);
-      vmm_switch_pm(vmm_kernel_pm);
+      // memset((void*)(phdr->vaddr + phdr->file_size), 0, phdr->mem_size - phdr->file_size);
+      vmm_switch_pm(old_pm);
     }
   }
   return hdr->entry;

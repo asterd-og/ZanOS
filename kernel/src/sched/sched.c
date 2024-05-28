@@ -91,7 +91,7 @@ task_ctrl* sched_new_elf(char* path, u64 cpu, int argc, char** argv) {
   vfs_node* node = vfs_open(vfs_root, path);
   u32 size = node->size;
   u8* img = (u8*)kmalloc(size);
-  dprintf("sched_new_elf(): Loading elf with %u bytes.\n", size);
+  dprintf("sched_new_elf(): Loading elf '%s' with %u bytes.\n", node->name, size);
   vfs_read(node, img, size);
   dprintf("sched_new_elf(): Elf read.\n");
   u64 entry = elf_load(img, task->pm);

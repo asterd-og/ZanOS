@@ -50,7 +50,7 @@ static const char* isr_errors[32] = {
 
 void idt_init() {
   for (u16 vec = 0; vec < 256; vec++) {
-    idt_set_entry(vec, idt_int_table[vec], 0x8E, (vec == 0x80 ? 3 : 0));
+    idt_set_entry(vec, idt_int_table[vec], 0x8E, (vec == 0x80 ? 0 : 0));
   }
 
   idt = (idtr){

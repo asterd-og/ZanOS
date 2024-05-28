@@ -11,6 +11,7 @@ u64 syscall_write(syscall_args a) {
   
   if (!task->fds[fd].vnode)
     return (u64)-1;
-    
-  return vfs_write(task->fds[fd].vnode, buffer, size);
+
+  int inc = vfs_write(task->fds[fd].vnode, buffer, size);
+  return inc;
 }
