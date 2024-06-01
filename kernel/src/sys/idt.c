@@ -80,7 +80,8 @@ void idt_set_entry(u8 vec, void* isr, u8 type, u8 dpl) {
 }
 
 void irq_register(u8 vec, void* handler) {
-  ioapic_redirect_irq(bsp_lapic_id, vec + 32, vec, false);
+  if (vec < 15)
+    ioapic_redirect_irq(bsp_lapic_id, vec + 32, vec, false);
   irq_handlers[vec] = handler;
 }
 
@@ -91,11 +92,6 @@ void irq_unregister(u8 vec) {
 void isr_handler(registers* r) {
   if (r->int_no == 0xff)
     return; // Spurious interrupt
-  
-  if (r->int_no == 0x80) {
-    syscall_handle(r);
-    return;
-  }
   
   if (r->int_no == 14) {
     // Page fault

@@ -39,6 +39,7 @@ void smp_init_cpu(struct limine_smp_info* smp_info) {
   vmm_switch_pm(vmm_kernel_pm);
 
   lapic_init();
+  lapic_calibrate_timer();
   user_init();
   sched_init();
 
@@ -46,6 +47,8 @@ void smp_init_cpu(struct limine_smp_info* smp_info) {
   smp_cpu_started++;
 
   unlock(&smp_lock);
+
+  lapic_ipi(smp_info->lapic_id, 0x80);
 
   while (true) {
     __asm__ volatile ("hlt");

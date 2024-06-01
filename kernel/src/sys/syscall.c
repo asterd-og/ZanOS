@@ -11,33 +11,36 @@ u64 syscall_unhandled(syscall_args a) {
 }
 
 void* syscall_table[] = {
-  syscall_exit,      // 0
-  syscall_kill,      // 1
-  syscall_signal,    // 2
-  syscall_raise,     // 3
+  syscall_exit,         // 0
+  syscall_kill,         // 1
+  syscall_signal,       // 2
+  syscall_raise,        // 3
 
-  syscall_sleep,     // 4
+  syscall_sleep,        // 4
 
-  syscall_malloc,    // 5
-  syscall_free,      // 6
-  syscall_realloc,   // 7
+  syscall_malloc,       // 5
+  syscall_free,         // 6
+  syscall_realloc,      // 7
 
-  syscall_getsz,     // 8
+  syscall_getsz,        // 8
 
-  syscall_unhandled, // 9
-  syscall_unhandled, // 10
+  syscall_unhandled,    // 9
+  syscall_unhandled,    // 10
 
-  syscall_open,      // 11
-  syscall_read,      // 12
-  syscall_write,     // 13
-  syscall_close,     // 14
+  syscall_open,         // 11
+  syscall_read,         // 12
+  syscall_write,        // 13
+  syscall_close,        // 14
 
-  syscall_getcwd,    // 15
-  syscall_chdir,     // 16
+  syscall_getcwd,       // 15
+  syscall_chdir,        // 16
 
-  syscall_opendir,   // 17
-  syscall_readdir,   // 18
-  syscall_closedir,  // 19
+  syscall_opendir,      // 17
+  syscall_readdir,      // 18
+  syscall_closedir,     // 19
+
+  syscall_sock_new,     // 20
+  syscall_sock_connect, // 21
 };
 
 void syscall_handle(registers* r) {

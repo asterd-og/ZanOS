@@ -24,6 +24,7 @@ gdt_table def_table = {
 tssr tss_list[256]; // One tssr per CPU
 
 void gdt_init() {
+  tss_list[lapic_get_id()].iopb = sizeof(tssr);
   uptr tss = (uptr)&tss_list[lapic_get_id()];
 
   def_table.tss_entry.length = sizeof(tss_entry);
@@ -36,8 +37,6 @@ void gdt_init() {
   def_table.tss_entry.resv = 0;
   
   // Thanks for Abbix and Solar (from the osdev server) to get me this thing working.
-
-  tss_list[lapic_get_id()].iopb = sizeof(tssr);
 
   gdtr gdt = (gdtr){
     .size = (sizeof(gdt_table)) - 1,

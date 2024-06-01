@@ -18,6 +18,11 @@ enum {
 typedef void(*signal_handler)(int);
 
 typedef struct task_ctrl {
+  u64 stack_base;   // gs:0
+  u64 kernel_stack; // gs:8
+
+  u64 gs;
+
   registers ctx;
   pagemap* pm;
   
@@ -26,8 +31,8 @@ typedef struct task_ctrl {
 
   u64 id;
   u64 cpu;
+  u64 cpu_idx; // index of this task inside the CPU task array
   
-  u64 stack_base;
   u64 sleeping_time;
   
   u8 state;
@@ -51,6 +56,9 @@ task_ctrl* sched_new_elf(char* path, u64 cpu, int argc, char** argv);
 
 void sched_schedule(registers* r);
 
+void block();
+void unblock(task_ctrl* task);
+void yield();
 void sleep(u64 ms);
 
 void sched_block(task_ctrl* task, u8 reason);

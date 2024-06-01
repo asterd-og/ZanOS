@@ -21,7 +21,7 @@ u64 elf_load(u8* img, pagemap* pm) {
       uptr seg_end = ALIGN_UP(seg_start + phdr->mem_size, PAGE_SIZE);
       size_t seg_size = seg_end - seg_start;
       void* seg = pmm_alloc(seg_size / PAGE_SIZE);
-      vmm_map_user_range(pm, seg_start, (uptr)seg, seg_size, PTE_PRESENT | PTE_WRITABLE | PTE_USER);
+      vmm_map_user_range(pm, seg_start, (uptr)seg, seg_size / PAGE_SIZE, PTE_PRESENT | PTE_WRITABLE | PTE_USER);
       pagemap* old_pm = this_cpu()->pm;
       vmm_switch_pm(pm);
       memcpy((void*)phdr->vaddr, (void*)img + phdr->offset, phdr->file_size);

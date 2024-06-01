@@ -15,12 +15,14 @@ atomic_lock sched_lock;
 
 void sched_idle() {
   while (1) {
+    __asm__ volatile ("hlt");
   }
 }
 
 void sched_init() {
   cpu_info* cpu = this_cpu();
   cpu->task_idx = -1;
+  cpu->task_current = NULL;
   sched_new_task(sched_idle, cpu->lapic_id, true);
 }
 
@@ -45,7 +47,9 @@ task_ctrl* sched_new_task(void* entry, u64 cpu, bool idle) {
   task->pm = vmm_new_pm();
   task->heap_area = heap_create();
 
-  task->id = (idle ? 0 : sched_glob_id++);
+  task->cpu_idx = c->task_count;
+
+  task->id = (idle ? 0 : ++sched_glob_id);
   task->cpu = cpu;
   task->stack_base = (u64)stack;
   task->sleeping_time = 0;
@@ -86,7 +90,6 @@ task_ctrl* sched_new_elf(char* path, u64 cpu, int argc, char** argv) {
   task->heap_area = heap_create();
 
   task->idle = false;
-  task->idle = true;
 
   vfs_node* node = vfs_open(vfs_root, path);
   u32 size = node->size;
@@ -108,31 +111,16 @@ task_ctrl* sched_new_elf(char* path, u64 cpu, int argc, char** argv) {
   task->ctx.cs  = 0x43;
   task->ctx.ss  = 0x3B;
   task->ctx.rflags = 0x202;
+  task->kernel_stack = (u64)(kmalloc(3 * PAGE_SIZE)) + (3 * PAGE_SIZE);
 
   vmm_map_user_range(task->pm, (uptr)stack, (uptr)stack, 3, PTE_PRESENT | PTE_WRITABLE | PTE_USER);
 
   task->ctx.rdi = argc + 1; // argc
   argv[0] = node->name;
 
-  pagemap* pm = this_cpu()->pm;
-  vmm_switch_pm(task->pm);
-  char** _argv = (char**)malloc((argc + 1) * sizeof(char*));
-  for (int i = 0; i < argc + 1; i++) {
-    char* arg = argv[i];
-    int arg_len = strlen(arg) + 1;
-    _argv[i] = (char*)malloc(arg_len);
-    memcpy(_argv[i], arg, arg_len);
-    kfree(argv[i]);
-  }
-  vmm_switch_pm(pm);
-  kfree(argv);
+  task->ctx.rsi = (u64)argv;
 
-  task->ctx.rsi = (u64)_argv;
-
-  // vmm_map_user_range(task->pm, (uptr)argv, (uptr)argv, DIV_ROUND_UP(sizeof(argv), PAGE_SIZE), PTE_PRESENT | PTE_WRITABLE | PTE_USER);
-  // for (int i = 0; i < argc; i++) {
-    // vmm_map_user_range(task->pm, (uptr)argv[i], (uptr)PHYSICAL(argv[i]), DIV_ROUND_UP(strlen(argv[i]), PAGE_SIZE), PTE_USER | PTE_WRITABLE | PTE_USER);
-  // }
+  task->cpu_idx = c->task_count;
 
   task->id = ++sched_glob_id;
   task->cpu = cpu;
@@ -159,6 +147,7 @@ task_ctrl* sched_get_next_task(cpu_info* c) {
   c->task_idx++;
   if (c->task_idx == c->task_count)
     c->task_idx = 0;
+  
   task_ctrl* task = c->task_list[c->task_idx];
   while (task->state != SCHED_RUNNING) {
     if (task->state == SCHED_SLEEPING) {
@@ -167,9 +156,11 @@ task_ctrl* sched_get_next_task(cpu_info* c) {
         return task;
       }
     }
+
     c->task_idx++;
     if (c->task_idx == c->task_count)
       c->task_idx = 0;
+
     task = c->task_list[c->task_idx];
   }
   return task;
@@ -178,42 +169,61 @@ task_ctrl* sched_get_next_task(cpu_info* c) {
 void sched_schedule(registers* r) {
   lapic_stop_timer();
 
+  vmm_switch_pm(vmm_kernel_pm);
+
   cpu_info* c = this_cpu();
 
-  if (c->task_current != NULL)
+  if (c->task_current != NULL) {
     c->task_current->ctx = *r;
-  
+    c->task_current->gs = read_kernel_gs();
+  }
+
   c->task_current = sched_get_next_task(c);
-  vmm_switch_pm(c->task_current->pm);
   *r = c->task_current->ctx;
+  vmm_switch_pm(c->task_current->pm);
+
+  write_kernel_gs((u64)c->task_current);
 
   lapic_eoi();
-  lapic_oneshot(0x32, 5); // 5ms timeslice
+  lapic_oneshot(0x80, 5); // 5ms timeslice
+}
+
+void yield() {
+  __asm__ volatile ("cli");
+  lapic_stop_timer();
+  lapic_ipi(lapic_get_id(), 0x80);
+  __asm__ volatile ("sti");
+}
+
+void block() {
+  cpu_info* c = this_cpu();
+  lapic_stop_timer();
+  lapic_ipi(c->lapic_id, 0x80);
+  c->task_current->state = SCHED_BLOCKED;
+  __asm__ volatile ("sti");
+}
+
+void unblock(task_ctrl* task) {
+  cpu_info* c = this_cpu();
+  lapic_stop_timer();
+  lapic_ipi(c->lapic_id, 0x80);
+  task->state = SCHED_RUNNING;
+  c->task_idx = task->cpu_idx-1;
+  __asm__ volatile ("sti");
 }
 
 void sleep(u64 ms) {
+  lapic_stop_timer();
+  lapic_ipi(this_cpu()->lapic_id, 0x80);
   cpu_info* c = this_cpu();
   c->task_current->sleeping_time = pit_ticks + ms;
   c->task_current->state = SCHED_SLEEPING;
-  __asm__ volatile ("int $0x32"); // schedule and jump to the next task
-}
-
-void sched_block(task_ctrl* task, u8 reason) {
-  cpu_info* c = get_cpu(task->cpu);
-  task->state = reason;
-  if (c->task_current == task)
-    lapic_ipi(task->cpu, 0x32);
-}
-
-void sched_unblock(task_ctrl* task) {
-  task->state = SCHED_RUNNING;
+  __asm__ volatile ("sti");
 }
 
 void sched_kill(task_ctrl* task) {
   if (task->state == SCHED_DEAD) return;
-  task->state = SCHED_DEAD;
-  if (this_cpu()->task_current == task)
-    __asm__ volatile ("int $0x32");
+  block();
 }
 
 task_ctrl* sched_get_task(u64 tid) {
@@ -229,5 +239,5 @@ task_ctrl* sched_get_task(u64 tid) {
 
 void sched_exit(int status) {
   this_cpu()->task_current->exit_status = status;
-  sched_kill(this_cpu()->task_current);
+  block();
 }

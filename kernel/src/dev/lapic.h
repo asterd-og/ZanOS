@@ -44,7 +44,7 @@ u32 lapic_read(u32 reg);
 
 void lapic_eoi();
 
-void lapic_ipi(u32 id, u32 dat);
+void lapic_ipi(u32 id, u8 dat);
 
 void lapic_send_all_int(u32 id, u32 vec);
 void lapic_send_others_int(u32 id, u32 vec);

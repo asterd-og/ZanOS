@@ -79,7 +79,15 @@ void hcf() {
   for (;;) __asm__ volatile ("hlt");
 }
 
+void task1() {
+  while (1) {
+    printf("T1");
+  }
+}
+
 void kernel_task() {
+  // sched_new_elf("/tmpfs/bin/server", 1, 1, sched_create_argv(1, ""));
+  // sched_new_elf("/tmpfs/bin/client", 1, 1, sched_create_argv(1, ""));
   sched_new_elf("/bin/shell", 1, 1, sched_create_argv(1, ""));
   while (1) {
   }
@@ -125,7 +133,7 @@ void _start(void) {
   pmm_init();
   vmm_init();
   
-  void* stack = HIGHER_HALF(pmm_alloc(3)) + (3 * PAGE_SIZE);
+  void* stack = HIGHER_HALF(pmm_alloc(3) + (3 * PAGE_SIZE));
   tss_list[0].rsp[0] = (u64)stack;
 
   kheap_init();
@@ -138,10 +146,11 @@ void _start(void) {
   lapic_init();
   ioapic_init();
   pit_init();
+  irq_register(0x80 - 32, sched_schedule);
   smp_init();
+  sched_init();
   user_init();
   lapic_calibrate_timer();
-  sched_init();
   dprintf("_start(): Initialised scheduler.\n");
   ata_init();
   printf("\033[38;2;0;255;255mZanOS\033[0m Booted successfully with %ld cores.\n", smp_cpu_count);
@@ -154,10 +163,8 @@ void _start(void) {
   fb_init();
 
   sched_new_task(kernel_task, 0, false);
+  lapic_ipi(bsp_lapic_id, 0x80);
 
-  irq_register(0x32 - 32, sched_schedule);
-  lapic_send_all_int(bsp_lapic_id, 0x32); // Jumpstart the scheduler
-  
   while (true) {
     __asm__ volatile ("hlt");
   }

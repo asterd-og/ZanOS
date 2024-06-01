@@ -28,6 +28,7 @@
     "tmpfs.h": "c",
     "lock.h": "c",
     "serial.h": "c",
-    "dev.h": "c"
+    "dev.h": "c",
+    "semaphore.h": "c"
   }
 }

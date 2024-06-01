@@ -211,7 +211,7 @@ irq_stub 124
 irq_stub 125
 irq_stub 126
 irq_stub 127
-isr_no_err_stub 128 ; 0x80 syscall
+irq_stub 128 ; Scheduler
 irq_stub 129
 irq_stub 130
 irq_stub 131
