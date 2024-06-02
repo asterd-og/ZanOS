@@ -40,4 +40,7 @@ u64 syscall_readdir(syscall_args a);
 u64 syscall_closedir(syscall_args a);
 
 u64 syscall_sock_new(syscall_args a);
+u64 syscall_sock_bind(syscall_args a);
 u64 syscall_sock_connect(syscall_args a);
+u64 syscall_sock_accept(syscall_args a);
+u64 syscall_sock_get_ready(syscall_args a);

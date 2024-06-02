@@ -86,9 +86,8 @@ void task1() {
 }
 
 void kernel_task() {
-  // sched_new_elf("/tmpfs/bin/server", 1, 1, sched_create_argv(1, ""));
-  // sched_new_elf("/tmpfs/bin/client", 1, 1, sched_create_argv(1, ""));
-  sched_new_elf("/bin/shell", 1, 1, sched_create_argv(1, ""));
+  sched_new_elf("/tmpfs/bin/zws", 1, 1, sched_create_argv(1, ""));
+  sched_new_elf("/tmpfs/bin/zterm", 1, 1, sched_create_argv(1, ""));
   while (1) {
   }
 }
