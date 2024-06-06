@@ -79,12 +79,6 @@ void hcf() {
   for (;;) __asm__ volatile ("hlt");
 }
 
-void task1() {
-  while (1) {
-    printf("T1");
-  }
-}
-
 void kernel_task() {
   sched_new_elf("/tmpfs/bin/zws", 1, 1, sched_create_argv(1, ""));
   sched_new_elf("/tmpfs/bin/zterm", 1, 1, sched_create_argv(1, ""));

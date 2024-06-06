@@ -25,6 +25,7 @@ typedef struct vfs_node {
   u32 size;
   u32 ino;
   u64 offset;
+  u64 tid; // TID of the task that opened this node.
   void* obj; // Dynamic object, could be anything, example, a socket!
   i32(*read)(struct vfs_node* vnode, u8* buffer, u32 count);
   i32(*write)(struct vfs_node* vnode, u8* buffer, u32 count);

@@ -3,48 +3,62 @@
 #include <mm/kmalloc.h>
 #include <dev/char/serial.h>
 #include <sched/sched.h>
+#include <sys/smp.h>
 
 socket* sock_list[1024];
 u64 sock_idx = 0;
 
 int socket_read(vfs_node* node, u8* buffer, u32 count) {
   socket* sock = (socket*)node->obj;
-  while (!sock->messages)
-    yield(); // yield until it's ready to be read from.
-  
-  if (count > sock->buf_size || node->offset + count > sock->buf_size)
-    return -1;
-  memcpy(buffer, sock->buffer + sock->read_offset, count);
-  sock->read_offset += count;
-  if (sock->read_offset >= sock->buf_size) {
-    // If the offset overflows, clear the buffer.
-    sock->read_offset = 0;
-    memset(sock->buffer, 0, sock->buf_size);
-    sock->flags |= SOCK_CLEARED;
-  }
+  if (!sock) return -1;
+
+  while (!(sock->flags & SOCK_MESSAGES))
+    yield(); // Poll this socket until it's ready to be read from. Yield to save CPU time.
+
+  if (sock->read_data == sock->data_head)
+    sock->read_data = sock->read_data->next;
+  socket_data* data = sock->read_data;
+
+  usize size = (count > data->size ? data->size : count);
+  memcpy(buffer, data->buffer, size);
+
+  kfree(data->buffer);
+  data->prev->next = data->next;
+  data->next->prev = data->prev;
+  kfree(data);
+
+  sock->read_data = sock->read_data->next;
+
   sock->messages--;
-  return count;
+  if (sock->messages == 0)
+    sock->flags &= ~SOCK_MESSAGES;
+
+  return size;
 }
 
 int socket_write(vfs_node* node, u8* buffer, u32 count) {
   socket* sock = (socket*)node->obj;
+  if (!sock) return -1;
 
   while (sock->flags & SOCK_WRITING)
-    yield(); // It's currently being written to by another task, wait.
+    yield(); // Poll this socket until it's ready to be written to!
 
-  sock->flags |= SOCK_WRITING;
+  socket_data* data = (socket_data*)kmalloc(sizeof(socket_data));
+  data->next = sock->data_head;
+  data->prev = sock->data_head->prev;
+  data->prev->next = data;
+  sock->data_head->prev = data;
 
-  if (count > sock->buf_size || sock->write_offset + count > sock->buf_size) {
-    if (count > sock->buf_size)
-      return -1;
-    // Count is within the buf size, just set the write off to 0 again
-    // let's sure hope that read has been called already, or it'll be overwritten!
-    sock->write_offset = 0;
-  }
-  memcpy(sock->buffer + sock->write_offset, buffer, count);
-  sock->write_offset += count;
+  data->size = count;
+
+  data->sender = this_cpu()->task_current->id;
+
+  data->buffer = (u8*)kmalloc(count);
+  memcpy(data->buffer, buffer, count);
+
   sock->messages++;
   sock->flags &= ~SOCK_WRITING;
+  sock->flags |= SOCK_MESSAGES;
   return count;
 }
 
@@ -54,14 +68,21 @@ socket* socket_open(task_ctrl* parent, u8 type, u64 buf_size, u64 max_conn) {
   sock->type = type;
   sock->buf_size = buf_size;
   sock->flags = 0;
-  sock->buffer = (u8*)kmalloc(buf_size);
-  memset(sock->buffer, 0, buf_size);
+
+  sock->data_head = (socket_data*)kmalloc(sizeof(socket_data));
+  sock->data_head->next = sock->data_head;
+  sock->data_head->prev = sock->data_head;
+
+  sock->read_data = sock->data_head;
+  sock->write_data = sock->data_head;
 
   sock->addrlen = 0;
 
   sock->max_conn = max_conn;
   sock->conn_count = 0;
   sock->conn_fds = (u64*)kmalloc(sock->max_conn * sizeof(u64));
+
+  sock->messages = 0;
 
   sock->conn_req_count = 0;
 
@@ -82,6 +103,7 @@ vfs_node* socket_create(socket* sock) {
   node->name = (char*)kmalloc(5);
   memcpy(node->name, "sock", 5);
   node->ino = 0;
+  node->tid = this_cpu()->task_current->id;
   node->write = socket_write;
   node->read = socket_read;
   node->readdir = 0;
@@ -126,8 +148,9 @@ int socket_get_ready(socket* sock) {
   socket* client;
   for (u64 i = 0; i < sock->conn_count; i++) {
     client = (socket*)sock->parent->fds[sock->conn_fds[i]].vnode->obj;
-    if (client->messages)
+    if (client->messages) {
       return sock->conn_fds[i];
+    }
   }
   return -1;
 }
@@ -143,4 +166,14 @@ socket* socket_find(char* address) {
     }
   }
   return NULL;
+}
+
+u64 socket_poll(socket* sock) {
+  // For now, just return it's flags;
+  return sock->flags;
+}
+
+u64 socket_msg_sender(socket* sock) {
+  if (sock->read_data->next == sock->data_head) return 0;
+  return sock->read_data->next->sender;
 }

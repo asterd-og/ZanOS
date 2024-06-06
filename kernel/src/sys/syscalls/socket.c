@@ -84,3 +84,25 @@ u64 syscall_sock_get_ready(syscall_args a) {
 
   return (u64)ret;
 }
+
+u64 syscall_sock_poll(syscall_args a) {
+  u64 sockfd = (u64)a.arg1;
+  task_ctrl* task = this_cpu()->task_current;
+
+  if (!task->fds[sockfd].vnode) return (u64)-1;
+
+  socket* sock = (socket*)task->fds[sockfd].vnode->obj;
+
+  return (u64)socket_poll(sock);
+}
+
+u64 syscall_sock_msg_sender(syscall_args a) {
+  u64 sockfd = (u64)a.arg1;
+  task_ctrl* task = this_cpu()->task_current;
+  
+  if (!task->fds[sockfd].vnode) return (u64)-1;
+
+  socket* sock = (socket*)task->fds[sockfd].vnode->obj;
+
+  return socket_msg_sender(sock);
+}

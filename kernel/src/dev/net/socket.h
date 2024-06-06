@@ -11,9 +11,18 @@
 
 #define SOCK_WRITING 0x1
 #define SOCK_UPDATE 0x2
-#define SOCK_CLEARED 0x3
+#define SOCK_CLEARED 0x4
+#define SOCK_MESSAGES 0x6
 
 #define SOCK_MAX_REQ_COUNT 0x10
+
+typedef struct socket_data {
+  u64 sender; // Server? client? contains sender's TID.
+  u8* buffer;
+  usize size;
+  struct socket_data* next;
+  struct socket_data* prev;
+} socket_data;
 
 typedef struct socket {
   task_ctrl* parent;
@@ -27,8 +36,10 @@ typedef struct socket {
   char* address;
   int addrlen;
 
-  u64 read_offset;
-  u64 write_offset;
+  socket_data* data_head;
+
+  socket_data* read_data;
+  socket_data* write_data;
   
   u64 max_conn;
   u64 conn_count;
@@ -48,3 +59,6 @@ int socket_connect(socket* from, char* address);
 int socket_get_ready(socket* sock);
 
 socket* socket_find(char* address);
+
+u64 socket_poll(socket* sock);
+u64 socket_msg_sender(socket* sock);
