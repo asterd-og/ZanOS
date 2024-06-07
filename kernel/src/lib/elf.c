@@ -25,7 +25,6 @@ u64 elf_load(u8* img, pagemap* pm) {
       pagemap* old_pm = this_cpu()->pm;
       vmm_switch_pm(pm);
       memcpy((void*)phdr->vaddr, (void*)img + phdr->offset, phdr->file_size);
-      // memset((void*)(phdr->vaddr + phdr->file_size), 0, phdr->mem_size - phdr->file_size);
       vmm_switch_pm(old_pm);
     }
   }

@@ -1,6 +1,7 @@
 #include <sys/smp.h>
 #include <sys/gdt.h>
 #include <sys/idt.h>
+#include <sys/cpu.h>
 #include <sys/user.h>
 #include <dev/char/serial.h>
 #include <mm/vmm.h>
@@ -37,6 +38,9 @@ void smp_init_cpu(struct limine_smp_info* smp_info) {
   smp_cpu_list[smp_info->lapic_id] = c;
 
   vmm_switch_pm(vmm_kernel_pm);
+
+  sse_enable();
+  fpu_init();
 
   lapic_init();
   lapic_calibrate_timer();

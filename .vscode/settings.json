@@ -29,6 +29,8 @@
     "lock.h": "c",
     "serial.h": "c",
     "dev.h": "c",
-    "semaphore.h": "c"
+    "semaphore.h": "c",
+    "vmm.h": "c",
+    "stdint.h": "c"
   }
 }

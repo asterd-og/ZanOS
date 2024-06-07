@@ -12,23 +12,24 @@ u64 syscall_getcwd(syscall_args a) {
     buf = (char*)malloc(size);
   }
   memset(buf, 0, size);
-  vfs_node nodes[128];
-  u32 i = 1;
+  vfs_node* nodes[128];
+  u64 i = 1;
   vfs_node* current = task->current_dir;
   while (current != NULL) {
-    nodes[i++] = *current;
+    nodes[i++] = current;
     current = current->parent;
   }
-  u32 pos = 0;
-  u32 len = 0;
-  for (u32 j = i - 1; j > 0; j--) {
-    len = strlen(nodes[j].name);
-    memcpy(buf + pos, nodes[j].name, len);
+  u64 pos = 0;
+  u64 len = 0;
+  for (u64 j = i - 1; j > 0; j--) {
+    len = strlen(nodes[j]->name);
+    memcpy(buf + pos, nodes[j]->name, len);
     pos += len;
-    if (j > 1 && j != i -1) {
+    if (j > 1 && j != i - 1) {
       buf[pos] = '/';
       pos++;
     }
   }
-  return (u64)buf;
+  buf[pos] = 0;
+  return 0;
 }

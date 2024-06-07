@@ -65,7 +65,6 @@
 // # define vprintf_   vprintf
 // #endif
 
-
 // 'ntoa' conversion buffer size, this must be big enough to hold one converted
 // numeric number including padded zeros (dynamically created on stack)
 #ifndef PRINTF_INTEGER_BUFFER_SIZE

@@ -53,6 +53,17 @@ run-normal: $(IMAGE_NAME).iso
 	-drive file="disk.img",format=raw \
 	-no-reboot -no-shutdown
 
+.PHONY: run-debug
+run-debug: $(IMAGE_NAME).iso
+	qemu-system-x86_64 -debugcon stdio \
+	-m 2G \
+	-cdrom $(IMAGE_NAME).iso \
+	-d int \
+	-boot d \
+	-smp 2 \
+	-drive file="disk.img",format=raw \
+	-no-reboot -no-shutdown
+
 run-ahci: $(IMAGE_NAME).iso
 	qemu-system-x86_64 -debugcon stdio \
 	-m 2G \

@@ -80,8 +80,7 @@ vfs_node* tmpfs_finddir(struct vfs_node* vnode, char* path) {
     node->type = VFS_FILE;
   else if (dir_inode->type_perms & EXT_DIRECTORY)
     node->type = VFS_DIRECTORY;
-  node->size = dir_inode->size; // To make sure it can read blocks
-  // Without interfering in other allocations.
+  node->size = dir_inode->size;
   node->ino = ino_no;
   node->read = tmpfs_read;
   node->readdir = tmpfs_readdir;

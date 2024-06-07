@@ -5,6 +5,9 @@
 #include <sched/sched.h>
 #include <sys/smp.h>
 
+// TODO: Change sockets to use buffers instead of linked list
+// Did that just to test some shit.
+
 socket* sock_list[1024];
 u64 sock_idx = 0;
 
@@ -83,6 +86,7 @@ socket* socket_open(task_ctrl* parent, u8 type, u64 buf_size, u64 max_conn) {
   sock->conn_fds = (u64*)kmalloc(sock->max_conn * sizeof(u64));
 
   sock->messages = 0;
+  sock->connected = 0;
 
   sock->conn_req_count = 0;
 
@@ -95,6 +99,7 @@ int socket_bind(socket* sock, char* address) {
   sock->address = (char*)kmalloc(addrlen + 1);
   memcpy(sock->address, address, addrlen + 1);
   sock->addrlen = addrlen;
+  sock->connected = true;
   return 0;
 }
 
@@ -124,6 +129,7 @@ int socket_accept(socket* sock) {
   u64 fd = sock->parent->fd_idx++;
   sock->parent->fds[fd] = fd_open(node, FS_READ | FS_WRITE, fd);
   sock->conn_fds[sock->conn_count] = fd;
+  from->connected = true;
 
   sock->conn_req_count--; sock->conn_count++;
   return fd;
@@ -136,9 +142,8 @@ int socket_connect(socket* from, char* address) {
   if (sock->conn_count >= sock->max_conn || sock->conn_req_count >= SOCK_MAX_REQ_COUNT)
     return -1;
 
-  u64 req_count = sock->conn_req_count;
   sock->conn_req[sock->conn_req_count++] = from;
-  while (sock->conn_req_count != req_count)
+  while (!from->connected)
     yield(); // Wait until it has connected
   return 0;
 }

@@ -64,20 +64,6 @@ task_ctrl* sched_new_task(void* entry, u64 cpu, bool idle) {
   return task;
 }
 
-char** sched_create_argv(int argc, ...) {
-  va_list va;
-  va_start(va, argc);
-  char** argv = (char**)kmalloc((argc + 1) * sizeof(char*));
-  for (int i = 0; i < argc; i++) {
-    char* arg = (char*)va_arg(va, char*);
-    int arg_len = strlen(arg) + 1;
-    argv[i + 1] = (char*)kmalloc(arg_len);
-    memcpy(argv[i + 1], arg, arg_len);
-  }
-  va_end(va);
-  return argv;
-}
-
 task_ctrl* sched_new_elf(char* path, u64 cpu, int argc, char** argv) {
   lock(&sched_lock);
 
@@ -116,9 +102,22 @@ task_ctrl* sched_new_elf(char* path, u64 cpu, int argc, char** argv) {
   vmm_map_user_range(task->pm, (uptr)stack, (uptr)stack, 3, PTE_PRESENT | PTE_WRITABLE | PTE_USER);
 
   task->ctx.rdi = argc + 1; // argc
-  argv[0] = node->name;
 
-  task->ctx.rsi = (u64)argv;
+  pagemap* old_pm = this_cpu()->pm;
+  vmm_switch_pm(task->pm);
+  char** argv_user = (char**)malloc((argc + 1) * sizeof(char*));
+  argv_user[0] = (char*)malloc(strlen(node->name));
+  memcpy(argv_user[0], node->name, strlen(node->name));
+
+  for (int i = 0; i < argc; i++) {
+    int arg_len = strlen(argv[i]) + 1;
+    argv_user[i + 1] = (char*)malloc(arg_len);
+    memcpy(argv_user[i + 1], argv[i], arg_len);
+  }
+
+  vmm_switch_pm(old_pm);
+
+  task->ctx.rsi = (u64)argv_user;
 
   task->cpu_idx = c->task_count;
 
@@ -238,6 +237,10 @@ task_ctrl* sched_get_task(u64 tid) {
 }
 
 void sched_exit(int status) {
-  this_cpu()->task_current->exit_status = status;
-  block();
+  lapic_stop_timer();
+  cpu_info* c = this_cpu();
+  c->task_current->exit_status = status;
+  c->task_current->state = SCHED_DEAD;
+  lapic_ipi(this_cpu()->lapic_id, 0x80);
+  __asm__ volatile ("sti");
 }

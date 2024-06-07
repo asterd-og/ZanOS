@@ -12,3 +12,6 @@ u64 read_cpu_gs();
 void write_cpu_gs(u64 value);
 u64 read_kernel_gs();
 void write_kernel_gs(u64 value);
+
+void sse_enable();
+u64 fpu_init();

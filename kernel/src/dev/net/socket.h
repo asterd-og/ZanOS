@@ -7,7 +7,7 @@
 
 #define SOCK_LOCAL 0x1
 #define SOCK_NET 0x2
-#define SOCK_SIZE 0x8192
+#define SOCK_SIZE 8192
 
 #define SOCK_WRITING 0x1
 #define SOCK_UPDATE 0x2
@@ -32,6 +32,8 @@ typedef struct socket {
   u64 flags;
   u64 messages;
   u8* buffer;
+
+  bool connected;
   
   char* address;
   int addrlen;

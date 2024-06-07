@@ -1,10 +1,10 @@
-// #define FLANTERM_SCALE_DEFAULT
 #include <kernel.h>
 #include <types.h>
 #include <limine.h>
 #include <sys/gdt.h>
 #include <sys/idt.h>
 #include <sys/smp.h>
+#include <sys/cpu.h>
 #include <sys/user.h>
 #include <lib/printf.h>
 #include <lib/libc.h>
@@ -80,9 +80,7 @@ void hcf() {
 }
 
 void kernel_task() {
-  sched_new_elf("/tmpfs/bin/zws", 1, 1, sched_create_argv(1, ""));
-  sched_new_elf("/tmpfs/bin/zterm", 1, 1, sched_create_argv(1, ""));
-  sched_new_elf("/tmpfs/bin/zterm", 1, 1, sched_create_argv(1, ""));
+  sched_new_elf("/tmpfs/bin/shell", 0, 1, (char*[]){"Hello world from argument 1!"});
   while (1) {
   }
 }
@@ -118,7 +116,7 @@ void _start(void) {
     NULL, NULL,
     NULL, NULL,
     NULL, 0, 0, 1,
-    0, 0,
+    2, 2,
     0
   );
 
@@ -141,6 +139,11 @@ void _start(void) {
   ioapic_init();
   pit_init();
   irq_register(0x80 - 32, sched_schedule);
+  sse_enable();
+  if (fpu_init()) {
+    printf("This CPU does NOT support FPU.\n");
+    hcf();
+  }
   smp_init();
   sched_init();
   user_init();

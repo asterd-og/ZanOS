@@ -96,7 +96,7 @@ void isr_handler(registers* r) {
   if (r->int_no == 14) {
     // Page fault
     if (this_cpu()->pm != vmm_kernel_pm) {
-      dprintf("isr_handler(): Task segmentation fault. RIP %llx. task %lu.\n", r->rip, this_cpu()->task_current->id);
+      dprintf("isr_handler(): Task segmentation fault. RIP %lx. task %lu.\n", r->rip, this_cpu()->task_current->id);
       sig_raise(SIGSEGV);
       return;
     }
