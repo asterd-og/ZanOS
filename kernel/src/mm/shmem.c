@@ -3,9 +3,6 @@
 #include <mm/kmalloc.h>
 #include <sys/smp.h>
 
-// TODO: Make a VMM allocate function to keep track of already mapped virtual addresses
-// find a free virtual unmapped address and use that
-
 shmem_chunk* shmem_list[SHMEM_MAX];
 u64 shmem_count = 0;
 
