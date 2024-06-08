@@ -109,14 +109,19 @@ task_ctrl* sched_new_elf(char* path, u64 cpu, int argc, char** argv) {
 
   pagemap* old_pm = this_cpu()->pm;
   vmm_switch_pm(task->pm);
+  dprintf("Did zero %d\n", (argc + 1) * sizeof(char*));
   char** argv_user = (char**)malloc((argc + 1) * sizeof(char*));
+  dprintf("Did one\n");
   argv_user[0] = (char*)malloc(strlen(node->name));
+  dprintf("Did two\n");
   memcpy(argv_user[0], node->name, strlen(node->name));
 
-  for (int i = 0; i < argc; i++) {
-    int arg_len = strlen(argv[i]) + 1;
-    argv_user[i + 1] = (char*)malloc(arg_len);
-    memcpy(argv_user[i + 1], argv[i], arg_len);
+  if (argc > 0) {
+    for (int i = 0; i < argc; i++) {
+      int arg_len = strlen(argv[i]) + 1;
+      argv_user[i + 1] = (char*)malloc(arg_len);
+      memcpy(argv_user[i + 1], argv[i], arg_len);
+    }
   }
 
   vmm_switch_pm(old_pm);

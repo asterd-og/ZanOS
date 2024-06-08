@@ -4,6 +4,10 @@
 #include <dev/char/serial.h>
 #include <sys/smp.h>
 
+// TODO: Make a function to keep tracked of already mapped virtual addresses
+// because our heap will request a virtual address and it might already be in use
+// by the ELF, and we don't want that to happen!
+
 struct limine_kernel_address_request kernel_address_request = {
   .id = LIMINE_KERNEL_ADDRESS_REQUEST,
   .revision = 0

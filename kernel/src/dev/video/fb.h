@@ -9,4 +9,6 @@ typedef struct {
   u32 bpp;
 } fb_info;
 
+extern fb_info* fb;
+
 void fb_init();

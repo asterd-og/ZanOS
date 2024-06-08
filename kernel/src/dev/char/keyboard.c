@@ -61,16 +61,29 @@ void keyboard_handle_key(u8 key) {
   unlock(&kb_lock);
 }
 
+void keyboard_wait_write() {
+  for (int i = 0; i < 10000; i++) {
+    if (!(inb(0x64) & 0x02)) {
+      return;
+    }
+  }
+}
+
+int keyboard_wait_read() {
+  for (int i = 0; i < 10000; i++) {
+    if ((inb(0x64) & 0x01) == 1) {
+      return 0;
+    }
+  }
+  return 1;
+}
+
 void keyboard_handler(registers* regs) {
   (void)regs;
 
-  u8 status;
   u8 key;
 
-  lapic_eoi();
-
-  status = inb(0x64);
-  if (status & 1) {
+  if (!keyboard_wait_read()) {
     key = inb(0x60);
     keyboard_handle_key(key);
   } else {
@@ -87,15 +100,27 @@ i32 keyboard_read(struct vfs_node* vnode, u8* buffer, u32 count) {
 }
 
 void keyboard_init() {
-  outb(0x64, 0xAE);
+  // https://wiki.osdev.org/%228042%22_PS/2_Controller#Command_Register
+  keyboard_wait_write();
+  outb(0x64, 0xAD);
+  keyboard_wait_write();
   outb(0x64, 0x20);
-  u8 status = inb(0x60);
-  status |= 1;
-  status &= ~0x20;
+  keyboard_wait_read();
+  u8 state = inb(0x60);
+  state |= (1 << 0) | (1 << 6);
+  if ((state & (1 << 5)) != 0) {
+    state |= (1 << 1);
+  }
+  keyboard_wait_write();
   outb(0x64, 0x60);
-  outb(0x60, status);
+  keyboard_wait_write();
+  outb(0x60, state);
 
-  outb(0x60, 0xAA);
+  keyboard_wait_write();
+  outb(0x64, 0xAE);
+  if ((state & (1 << 5)) != 0) {
+    outb(0x64, 0xa8);
+  }
 
   keyboard_fifo = fifo_create(256, sizeof(keyboard_event));
   kb_node = (vfs_node*)kmalloc(sizeof(vfs_node));

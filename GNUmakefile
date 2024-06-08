@@ -4,9 +4,9 @@ override MAKEFLAGS += -rR
 override IMAGE_NAME := ZanOS
 
 # Change those in your machine!
-# QEMU := ./../build/qemu-system-x86_64
-# QARGS := -L /usr/share/seabios/ -L /usr/share/qemu -L /usr/lib/ipxe/qemu/
-QEMU := qemu-system-x86_64
+QEMU := ./../build/qemu-system-x86_64
+QARGS := -L /usr/share/seabios/ -L /usr/share/qemu -L /usr/lib/ipxe/qemu/
+# QEMU := qemu-system-x86_64
 
 # Convenience macro to reliably declare user overridable variables.
 define DEFAULT_VAR =

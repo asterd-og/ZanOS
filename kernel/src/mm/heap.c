@@ -16,10 +16,9 @@ heap* heap_create() {
 void* heap_alloc(heap* h, u64 size) {
   lock(&h->hl);
   u64 pages = DIV_ROUND_UP(sizeof(heap_block) + size, PAGE_SIZE);
-  void* buf = pmm_alloc(pages);
-  if (this_cpu() && h != kernel_heap) {
+  u8* buf = pmm_alloc(pages);
+  if (this_cpu() && h != kernel_heap)
     vmm_map_user_range(this_cpu()->pm, (uptr)buf, (uptr)buf, pages, PTE_PRESENT | PTE_WRITABLE | PTE_USER);
-  }
   if (h == kernel_heap)
     buf = HIGHER_HALF(buf);
   heap_block* block = (heap_block*)buf;

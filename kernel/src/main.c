@@ -24,6 +24,7 @@
 #include <dev/pci.h>
 #include <dev/block/ata.h>
 #include <dev/char/keyboard.h>
+#include <dev/char/mouse.h>
 #include <dev/video/fb.h>
 #include <sched/sched.h>
 #include <sched/signal.h>
@@ -80,7 +81,8 @@ void hcf() {
 }
 
 void kernel_task() {
-  sched_new_elf("/tmpfs/bin/shell", 0, 0, (char*[]){""});
+  sched_new_elf("/tmpfs/bin/zws", 1, 0, (char*[]){""});
+  sched_new_elf("/tmpfs/bin/zterm", 1, 0, (char*[]){""});
   while (1) {
   }
 }
@@ -158,6 +160,7 @@ void _start(void) {
   keyboard_init();
   tty_init();
   fb_init();
+  mouse_init();
 
   sched_new_task(kernel_task, 0, false);
   lapic_ipi(bsp_lapic_id, 0x80);
