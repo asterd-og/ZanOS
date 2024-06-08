@@ -80,7 +80,7 @@ void hcf() {
 }
 
 void kernel_task() {
-  sched_new_elf("/tmpfs/bin/shell", 0, 1, (char*[]){"Hello world from argument 1!"});
+  sched_new_elf("/tmpfs/bin/shell", 0, 0, (char*[]){""});
   while (1) {
   }
 }

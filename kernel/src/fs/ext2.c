@@ -78,7 +78,7 @@ u32 ext2_get_inode(ext2_fs* fs, ext2_inode* in, char* name) {
   return 0;
 }
 
-void ext2_read_singly_blocks(ext2_fs* fs, u32 singly_block_id, u8* buf, u32 count) {
+u32 ext2_read_singly_blocks(ext2_fs* fs, u32 singly_block_id, u8* buf, u32 count) {
   u32* blocks = (u32*)kmalloc(fs->block_size);
   u32 block_count = fs->block_size / 4; // on 1KB Blocks, 13 - 268 (or 256 blocks)
   // Think about it this way: it's 1024 (block size) divided by 4 bytes (32 bit values)
@@ -93,9 +93,10 @@ void ext2_read_singly_blocks(ext2_fs* fs, u32 singly_block_id, u8* buf, u32 coun
     remaining -= fs->block_size;
   }
   kfree(blocks);
+  return remaining;
 }
 
-void ext2_read_doubly_blocks(ext2_fs* fs, u32 doubly_block_id, u8* buf, u32 count) {
+u32 ext2_read_doubly_blocks(ext2_fs* fs, u32 doubly_block_id, u8* buf, u32 count) {
   // A block containing an array of indirect block IDs
   // with each of those indirect blocks containing an array of blocks containing the data
   u32* blocks = (u32*)kmalloc(fs->block_size);
@@ -115,6 +116,7 @@ void ext2_read_doubly_blocks(ext2_fs* fs, u32 doubly_block_id, u8* buf, u32 coun
     remaining -= rem_limit;
   }
   kfree(blocks);
+  return remaining;
 }
 
 void ext2_read_inode_blocks(ext2_fs* fs, ext2_inode* in, u8* buf, u32 count) {

@@ -47,6 +47,8 @@ task_ctrl* sched_new_task(void* entry, u64 cpu, bool idle) {
   task->pm = vmm_new_pm();
   task->heap_area = heap_create();
 
+  __asm__ volatile ("fxsave %0" : : "m"(task->fxsave));
+
   task->cpu_idx = c->task_count;
 
   task->id = (idle ? 0 : ++sched_glob_id);
@@ -98,6 +100,8 @@ task_ctrl* sched_new_elf(char* path, u64 cpu, int argc, char** argv) {
   task->ctx.ss  = 0x3B;
   task->ctx.rflags = 0x202;
   task->kernel_stack = (u64)(kmalloc(3 * PAGE_SIZE)) + (3 * PAGE_SIZE);
+
+  __asm__ volatile ("fxsave %0" : : "m"(task->fxsave));
 
   vmm_map_user_range(task->pm, (uptr)stack, (uptr)stack, 3, PTE_PRESENT | PTE_WRITABLE | PTE_USER);
 
@@ -175,11 +179,13 @@ void sched_schedule(registers* r) {
   if (c->task_current != NULL) {
     c->task_current->ctx = *r;
     c->task_current->gs = read_kernel_gs();
+    __asm__ volatile ("fxsave %0" : : "m"(c->task_current->fxsave));
   }
 
   c->task_current = sched_get_next_task(c);
   *r = c->task_current->ctx;
   vmm_switch_pm(c->task_current->pm);
+  __asm__ volatile ("fxrstor %0" : : "m"(c->task_current->fxsave));
 
   write_kernel_gs((u64)c->task_current);
 

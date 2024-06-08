@@ -87,6 +87,16 @@ i32 keyboard_read(struct vfs_node* vnode, u8* buffer, u32 count) {
 }
 
 void keyboard_init() {
+  outb(0x64, 0xAE);
+  outb(0x64, 0x20);
+  u8 status = inb(0x60);
+  status |= 1;
+  status &= ~0x20;
+  outb(0x64, 0x60);
+  outb(0x60, status);
+
+  outb(0x60, 0xAA);
+
   keyboard_fifo = fifo_create(256, sizeof(keyboard_event));
   kb_node = (vfs_node*)kmalloc(sizeof(vfs_node));
   kb_node->name = (char*)kmalloc(9);

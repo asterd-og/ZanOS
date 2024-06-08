@@ -37,7 +37,9 @@ typedef struct task_ctrl {
   
   u8 state;
   int exit_status;
-  
+
+  char fxsave[512] __attribute__((aligned(16)));
+
   heap* heap_area;
   
   vfs_node* current_dir;
