@@ -14,6 +14,7 @@
 #include <mm/vmm.h>
 #include <mm/heap.h>
 #include <mm/kmalloc.h>
+#include <mm/malloc.h>
 #include <acpi/acpi.h>
 #include <acpi/madt.h>
 #include <dev/lapic.h>
@@ -81,8 +82,9 @@ void hcf() {
 }
 
 void kernel_task() {
-  sched_new_elf("/tmpfs/bin/zws", 1, 0, (char*[]){""});
-  sched_new_elf("/tmpfs/bin/zterm", 1, 0, (char*[]){""});
+  char* test = (char*)malloc(512);
+  memset(test, 'a', 512);
+  printf("%s", test);
   while (1) {
   }
 }
@@ -118,7 +120,7 @@ void _start(void) {
     NULL, NULL,
     NULL, NULL,
     NULL, 0, 0, 1,
-    2, 2,
+    1, 1,
     0
   );
 

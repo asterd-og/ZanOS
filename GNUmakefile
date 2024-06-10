@@ -47,8 +47,8 @@ run-normal: $(IMAGE_NAME).iso
 	qemu-system-x86_64 -debugcon stdio \
 	-m 2G \
 	-cdrom $(IMAGE_NAME).iso \
-	-enable-kvm \
 	-boot d \
+	-enable-kvm \
 	-smp 2 \
 	-drive file="disk.img",format=raw \
 	-no-reboot -no-shutdown

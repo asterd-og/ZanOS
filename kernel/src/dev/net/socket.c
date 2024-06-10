@@ -49,7 +49,7 @@ int socket_write(vfs_node* node, u8* buffer, u32 count) {
   socket_data* data = (socket_data*)kmalloc(sizeof(socket_data));
   data->next = sock->data_head;
   data->prev = sock->data_head->prev;
-  data->prev->next = data;
+  sock->data_head->prev->next = data;
   sock->data_head->prev = data;
 
   data->size = count;

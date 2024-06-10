@@ -17,7 +17,7 @@ u64 elf_load(u8* img, pagemap* pm) {
   for (u16 i = 0; i < hdr->entry_ph_count; i++, phdr++) {
     if (phdr->type == 1) {
       // Elf load
-      uptr seg_start = ALIGN_DOWN(phdr->vaddr, PAGE_SIZE);
+      uptr seg_start = phdr->vaddr & ~0xFFF;
       uptr seg_end = ALIGN_UP(seg_start + phdr->mem_size, PAGE_SIZE);
       size_t seg_size = seg_end - seg_start;
       void* seg = pmm_alloc(seg_size / PAGE_SIZE);

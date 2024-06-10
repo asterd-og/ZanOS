@@ -19,6 +19,15 @@ void vmm_init() {
   vmm_kernel_pm = (pagemap*)HIGHER_HALF(pmm_alloc(1));
   memset(vmm_kernel_pm, 0, PAGE_SIZE);
 
+  vmm_kernel_pm->top_lvl = (uptr*)HIGHER_HALF(pmm_alloc(1));
+  memset(vmm_kernel_pm->top_lvl, 0, PAGE_SIZE);
+
+  vmm_kernel_pm->vma_head = (vma_region*)HIGHER_HALF(pmm_alloc(1));
+  memset(vmm_kernel_pm->vma_head, 0, PAGE_SIZE);
+
+  vmm_kernel_pm->vma_head->next = vmm_kernel_pm->vma_head;
+  vmm_kernel_pm->vma_head->prev = vmm_kernel_pm->vma_head;
+
   uptr phys_base = kernel_address_request.response->physical_base;
   uptr virt_base = kernel_address_request.response->virtual_base;
 
@@ -59,17 +68,27 @@ uptr* vmm_get_next_lvl(uptr* lvl, uptr entry, u64 flags, bool alloc) {
 pagemap* vmm_new_pm() {
   pagemap* pm = (pagemap*)HIGHER_HALF(pmm_alloc(1));
   memset(pm, 0, PAGE_SIZE);
+
+  pm->top_lvl = (uptr*)HIGHER_HALF(pmm_alloc(1));
+  memset(pm->top_lvl, 0, PAGE_SIZE);
+
+  pm->vma_head = (vma_region*)HIGHER_HALF(pmm_alloc(1));
+  memset(pm->vma_head, 0, PAGE_SIZE);
+
+  pm->vma_head->next = pm->vma_head;
+  pm->vma_head->prev = pm->vma_head;
+
   for (usize i = 256; i < 512; i++)
     pm[i] = vmm_kernel_pm[i];
   return pm;
 }
 
 void vmm_switch_pm_nocpu(pagemap* pm) {
-  __asm__ volatile ("mov %0, %%cr3" : : "r"((u64)PHYSICAL(pm)) : "memory");
+  __asm__ volatile ("mov %0, %%cr3" : : "r"((u64)PHYSICAL(pm->top_lvl)) : "memory");
 }
 
 void vmm_switch_pm(pagemap* pm) {
-  __asm__ volatile ("mov %0, %%cr3" : : "r"((u64)PHYSICAL(pm)) : "memory");
+  __asm__ volatile ("mov %0, %%cr3" : : "r"((u64)PHYSICAL(pm->top_lvl)) : "memory");
   this_cpu()->pm = pm;
 }
 
@@ -79,7 +98,7 @@ void vmm_map(pagemap* pm, uptr vaddr, uptr paddr, u64 flags) {
   uptr pml3_entry = (vaddr >> 30) & 0x1ff;
   uptr pml4_entry = (vaddr >> 39) & 0x1ff;
 
-  uptr* pml3 = vmm_get_next_lvl(pm, pml4_entry, PTE_PRESENT | PTE_WRITABLE, true);       // pml4[pml4Entry] = pml3
+  uptr* pml3 = vmm_get_next_lvl(pm->top_lvl, pml4_entry, PTE_PRESENT | PTE_WRITABLE, true);       // pml4[pml4Entry] = pml3
   uptr* pml2 = vmm_get_next_lvl(pml3, pml3_entry, PTE_PRESENT | PTE_WRITABLE, true);     // pml3[pml3Entry] = pml2
   uptr* pml1 = vmm_get_next_lvl(pml2, pml2_entry, PTE_PRESENT | PTE_WRITABLE, true);     // pml2[pml2Entry] = pml1
 
@@ -92,7 +111,7 @@ void vmm_map_user(pagemap* pm, uptr vaddr, uptr paddr, u64 flags) {
   uptr pml3_entry = (vaddr >> 30) & 0x1ff;
   uptr pml4_entry = (vaddr >> 39) & 0x1ff;
 
-  uptr* pml3 = vmm_get_next_lvl(pm, pml4_entry, flags, true);       // pml4[pml4Entry] = pml3
+  uptr* pml3 = vmm_get_next_lvl(pm->top_lvl, pml4_entry, flags, true);       // pml4[pml4Entry] = pml3
   uptr* pml2 = vmm_get_next_lvl(pml3, pml3_entry, flags, true);     // pml3[pml3Entry] = pml2
   uptr* pml1 = vmm_get_next_lvl(pml2, pml2_entry, flags, true);     // pml2[pml2Entry] = pml1
 
@@ -105,7 +124,7 @@ void vmm_unmap(pagemap* pm, uptr vaddr) {
   uptr pml3_entry = (vaddr >> 30) & 0x1ff;
   uptr pml4_entry = (vaddr >> 39) & 0x1ff;
 
-  uptr* pml3 = vmm_get_next_lvl(pm, pml4_entry, 0, false);
+  uptr* pml3 = vmm_get_next_lvl(pm->top_lvl, pml4_entry, 0, false);
   if (pml3 == NULL) return;
   uptr* pml2 = vmm_get_next_lvl(pml3, pml3_entry, 0, false);
   if (pml2 == NULL) return;

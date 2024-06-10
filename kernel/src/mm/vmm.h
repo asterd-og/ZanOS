@@ -12,7 +12,23 @@
 #define PTE_GET_ADDR(VALUE) ((VALUE) & PTE_ADDR_MASK)
 #define PTE_GET_FLAGS(VALUE) ((VALUE) & ~PTE_ADDR_MASK)
 
-typedef uptr pagemap;
+typedef struct vma_region {
+  uptr vaddr;
+  uptr end;
+
+  u64 pages;
+  u64 flags;
+
+  uptr paddr;
+
+  struct vma_region* next;
+  struct vma_region* prev;
+} vma_region;
+
+typedef struct {
+  uptr* top_lvl;
+  vma_region* vma_head;
+} pagemap;
 
 extern pagemap* vmm_kernel_pm;
 
@@ -31,6 +47,9 @@ pagemap* vmm_new_pm();
 
 void vmm_switch_pm_nocpu(pagemap* pm);
 void vmm_switch_pm(pagemap* pm);
+
+void vmm_create_region(pagemap* pm, uptr vaddr, uptr paddr, u64 pages, u64 flags);
+void vmm_delete_region(pagemap* pm, vma_region* region);
 
 void vmm_map(pagemap* pm, uptr vaddr, uptr paddr, u64 flags);
 void vmm_map_user(pagemap* pm, uptr vaddr, uptr paddr, u64 flags);
