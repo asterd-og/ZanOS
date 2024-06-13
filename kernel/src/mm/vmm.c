@@ -4,10 +4,6 @@
 #include <dev/char/serial.h>
 #include <sys/smp.h>
 
-// TODO: Make a function to keep tracked of already mapped virtual addresses
-// because our heap will request a virtual address and it might already be in use
-// by the ELF, and we don't want that to happen!
-
 struct limine_kernel_address_request kernel_address_request = {
   .id = LIMINE_KERNEL_ADDRESS_REQUEST,
   .revision = 0
@@ -53,6 +49,36 @@ void vmm_init() {
   dprintf("vmm_init(): VMM Initialised. Kernel's page map located at %lx.\n", (u64)vmm_kernel_pm);
 }
 
+void vmm_create_region(pagemap* pm, uptr vaddr, uptr paddr, u64 pages, u64 flags) {
+  vma_region* region = (vma_region*)HIGHER_HALF(pmm_alloc(1));
+  region->vaddr = vaddr;
+  region->end = vaddr + (pages * PAGE_SIZE);
+  region->paddr = paddr;
+  region->pages = pages;
+  region->flags = flags;
+
+  region->prev = pm->vma_head->prev;
+  region->next = pm->vma_head;
+
+  pm->vma_head->prev->next = region;
+  pm->vma_head->prev = region;
+}
+
+void vmm_delete_region(vma_region* region) {
+  region->prev->next = region->prev;
+  region->next->prev = region->prev;
+
+  pmm_free(PHYSICAL(region), 1);
+}
+
+vma_region* vmm_get_region(pagemap* pm, uptr vaddr) {
+  vma_region* region = pm->vma_head->next;
+  for (; region != pm->vma_head; region = region->next)
+    if (region->vaddr == vaddr)
+      return region;
+  return NULL;
+}
+
 uptr* vmm_get_next_lvl(uptr* lvl, uptr entry, u64 flags, bool alloc) {
   if (lvl[entry] & PTE_PRESENT)
     return HIGHER_HALF(PTE_GET_ADDR(lvl[entry]));
@@ -79,7 +105,7 @@ pagemap* vmm_new_pm() {
   pm->vma_head->prev = pm->vma_head;
 
   for (usize i = 256; i < 512; i++)
-    pm[i] = vmm_kernel_pm[i];
+    pm->top_lvl[i] = vmm_kernel_pm->top_lvl[i];
   return pm;
 }
 
@@ -137,24 +163,52 @@ void vmm_unmap(pagemap* pm, uptr vaddr) {
 void vmm_map_range(pagemap* pm, uptr vaddr, uptr paddr, u64 pages, u64 flags) {
   for (u64 i = 0; i < pages; i++)
     vmm_map(pm, vaddr + (i * PAGE_SIZE), paddr + (i * PAGE_SIZE), flags);
+  vmm_create_region(pm, vaddr, paddr, pages, flags);
 }
 
 void vmm_map_user_range(pagemap* pm, uptr vaddr, uptr paddr, u64 pages, u64 flags) {
   for (u64 i = 0; i < pages; i++)
     vmm_map_user(pm, vaddr + (i * PAGE_SIZE), paddr + (i * PAGE_SIZE), flags);
+  vmm_create_region(pm, vaddr, paddr, pages, flags);
 }
 
-void* vmm_alloc(u64 pages, u64 flags) {
+void vmm_unmap_range(pagemap* pm, uptr vaddr, u64 pages) {
+  for (u64 i = 0; i < pages; i++)
+    vmm_unmap(pm, vaddr + (i * PAGE_SIZE));
+}
+
+void* vmm_alloc(pagemap* pm, u64 pages, u64 flags) {
   void* pg = pmm_alloc(pages);
   if (!pg) return NULL;
-  for (u64 p = 0; p < pages; p++)
-    vmm_map(this_cpu()->pm, (uptr)pg + (p * PAGE_SIZE), (uptr)pg + (p * PAGE_SIZE), flags);
-  return pg;
+  // In case we didn't find a hole, create a new region
+  uptr vaddr = pm->vma_head->prev->end + PAGE_SIZE;
+  vma_region* region = pm->vma_head->next;
+  for (; region != pm->vma_head; region = region->next) {
+    if (region->end >= region->next->vaddr)
+      continue;
+    // We found a hole, now check it's size
+    if (region->next->vaddr - region->end >= ((pages + 1) * PAGE_SIZE)) {
+      vaddr = region->end + PAGE_SIZE;
+      break;
+    }
+  }
+  vmm_map_user_range(pm, vaddr, (uptr)pg, pages, flags);
+  return (void*)vaddr;
 }
 
-void vmm_free(void* ptr, u64 pages) {
+void vmm_free(pagemap* pm, void* ptr, u64 pages) {
   if (!ptr) return;
-  pmm_free(ptr, pages);
-  for (u64 p = 0; p < pages; p++)
-    vmm_unmap(this_cpu()->pm, (uptr)ptr + (p * PAGE_SIZE));
+  vma_region* region = vmm_get_region(pm, (uptr)ptr);
+  if (!region)
+    return;
+  pmm_free((void*)region->paddr, pages);
+  vmm_unmap_range(pm, region->vaddr, pages);
+  vmm_delete_region(region);
+}
+
+uptr vmm_get_paddr(pagemap* pm, uptr ptr) {
+  vma_region* region = vmm_get_region(pm, ptr);
+  if (!region)
+    return 0;
+  return region->paddr;
 }

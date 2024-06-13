@@ -39,3 +39,7 @@ void fifo_pop(fifo* f, void* buffer) {
   }
   unlock(&f->lock);
 }
+
+void fifo_get(fifo* f, void* buffer) {
+  memcpy(buffer, (f->data + (f->idx * f->item_size)), f->item_size);
+}

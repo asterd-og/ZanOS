@@ -96,7 +96,15 @@ void isr_handler(registers* r) {
   if (r->int_no == 14) {
     // Page fault
     if (this_cpu()->pm != vmm_kernel_pm) {
-      dprintf("isr_handler(): Task segmentation fault. RIP %lx. task %lu.\n", r->rip, this_cpu()->task_current->id);
+      u64 cr2;
+      __asm__ volatile ("mov %%cr2, %0" : "=r"(cr2));
+      dprintf("isr_handler(): Task segmentation fault. RIP %lx. RSP %lx CR2 %lx PM %lx task %lu\n", r->rip, r->rsp, cr2, this_cpu()->pm, this_cpu()->task_current->id, r->err_code);
+      if (!(r->err_code & PTE_PRESENT)) dprintf("isr_handler(): Page was not present, ");
+      else dprintf("isr_handler(): Page was present, ");
+      if (!(r->err_code & PTE_WRITABLE)) dprintf("was not writable, ");
+      else dprintf("was writable, ");
+      if (!(r->err_code & PTE_USER)) dprintf("and was not user.\n");
+      else dprintf("and was user.\n");
       sig_raise(SIGSEGV);
       return;
     }

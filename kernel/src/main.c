@@ -82,9 +82,8 @@ void hcf() {
 }
 
 void kernel_task() {
-  char* test = (char*)malloc(512);
-  memset(test, 'a', 512);
-  printf("%s", test);
+  sched_new_elf("/tmpfs/bin/zws", 1, 1, (char*[]){""});
+  sched_new_elf("/tmpfs/bin/zterm", 1, 1, (char*[]){""});
   while (1) {
   }
 }

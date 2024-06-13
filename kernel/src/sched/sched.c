@@ -27,9 +27,8 @@ void sched_init() {
 }
 
 task_ctrl* sched_new_task(void* entry, u64 cpu, bool idle) {
-  lock(&sched_lock);
-
   cpu_info* c = get_cpu(cpu);
+  lock(&c->sched_lock);
 
   task_ctrl* task = (task_ctrl*)kmalloc(sizeof(task_ctrl));
   memset(task, 0, sizeof(task_ctrl));
@@ -45,7 +44,7 @@ task_ctrl* sched_new_task(void* entry, u64 cpu, bool idle) {
   task->ctx.rflags = 0x202;
 
   task->pm = vmm_new_pm();
-  task->heap_area = heap_create();
+  task->heap_area = heap_create(task->pm);
 
   __asm__ volatile ("fxsave %0" : : "m"(task->fxsave));
 
@@ -61,21 +60,20 @@ task_ctrl* sched_new_task(void* entry, u64 cpu, bool idle) {
 
   c->task_list[c->task_count++] = task;
 
-  unlock(&sched_lock);
+  unlock(&c->sched_lock);
 
   return task;
 }
 
 task_ctrl* sched_new_elf(char* path, u64 cpu, int argc, char** argv) {
-  lock(&sched_lock);
-
   cpu_info* c = get_cpu(cpu);
+  lock(&c->sched_lock);
 
   task_ctrl* task = (task_ctrl*)kmalloc(sizeof(task_ctrl));
   memset(task, 0, sizeof(task_ctrl));
 
   task->pm = vmm_new_pm();
-  task->heap_area = heap_create();
+  task->heap_area = heap_create(task->pm);
 
   task->idle = false;
 
@@ -84,17 +82,14 @@ task_ctrl* sched_new_elf(char* path, u64 cpu, int argc, char** argv) {
   u8* img = (u8*)kmalloc(size);
   dprintf("sched_new_elf(): Loading elf '%s' with %u bytes.\n", node->name, size);
   vfs_read(node, img, size);
-  dprintf("sched_new_elf(): Elf read.\n");
   u64 entry = elf_load(img, task->pm);
-  dprintf("sched_new_elf(): Elf loaded.\n");
   if (entry == (u64)-1) {
     dprintf("sched_new_elf(): Failed to load elf.\n");
     kfree(task);
+    unlock(&c->sched_lock);
     return NULL;
   }
 
-  char* stack = (char*)pmm_alloc(3);
-  task->ctx.rsp = (u64)(stack + (3 * PAGE_SIZE));
   task->ctx.rip = (u64)entry;
   task->ctx.cs  = 0x43;
   task->ctx.ss  = 0x3B;
@@ -103,28 +98,29 @@ task_ctrl* sched_new_elf(char* path, u64 cpu, int argc, char** argv) {
 
   __asm__ volatile ("fxsave %0" : : "m"(task->fxsave));
 
-  vmm_map_user_range(task->pm, (uptr)stack, (uptr)stack, 3, PTE_PRESENT | PTE_WRITABLE | PTE_USER);
-
   task->ctx.rdi = argc + 1; // argc
 
-  pagemap* old_pm = this_cpu()->pm;
+  pagemap* bp = this_cpu()->pm;
   vmm_switch_pm(task->pm);
-  dprintf("Did zero %d\n", (argc + 1) * sizeof(char*));
-  char** argv_user = (char**)malloc((argc + 1) * sizeof(char*));
-  dprintf("Did one\n");
-  argv_user[0] = (char*)malloc(strlen(node->name));
-  dprintf("Did two\n");
+
+  char* stack = (char*)heap_alloc(task->heap_area, 3 * PAGE_SIZE);
+  task->ctx.rsp = (u64)(stack + (3 * PAGE_SIZE));
+  task->stack_base = (u64)stack;
+  memset(stack, 0, 3 * PAGE_SIZE);
+
+  char** argv_user = (char**)heap_alloc(task->heap_area, (argc + 1) * sizeof(char*));
+  argv_user[0] = (char*)heap_alloc(task->heap_area, strlen(node->name));
   memcpy(argv_user[0], node->name, strlen(node->name));
 
   if (argc > 0) {
     for (int i = 0; i < argc; i++) {
       int arg_len = strlen(argv[i]) + 1;
-      argv_user[i + 1] = (char*)malloc(arg_len);
+      argv_user[i + 1] = (char*)heap_alloc(task->heap_area, arg_len);
       memcpy(argv_user[i + 1], argv[i], arg_len);
     }
   }
 
-  vmm_switch_pm(old_pm);
+  vmm_switch_pm(bp);
 
   task->ctx.rsi = (u64)argv_user;
 
@@ -132,7 +128,6 @@ task_ctrl* sched_new_elf(char* path, u64 cpu, int argc, char** argv) {
 
   task->id = ++sched_glob_id;
   task->cpu = cpu;
-  task->stack_base = (u64)stack;
   task->sleeping_time = 0;
   task->state = SCHED_RUNNING;
 
@@ -146,7 +141,7 @@ task_ctrl* sched_new_elf(char* path, u64 cpu, int argc, char** argv) {
 
   dprintf("sched_new_elf(): Task %ld created.\n", task->id);
 
-  unlock(&sched_lock);
+  unlock(&c->sched_lock);
 
   return task;
 }
@@ -160,7 +155,7 @@ task_ctrl* sched_get_next_task(cpu_info* c) {
   while (task->state != SCHED_RUNNING) {
     if (task->state == SCHED_SLEEPING) {
       if (task->sleeping_time <= pit_ticks) {
-        task->state = SCHED_RUNNING;
+        task->state = SCHED_RUNNING; // change this to block and unblock task to jump to it
         return task;
       }
     }
@@ -177,13 +172,12 @@ task_ctrl* sched_get_next_task(cpu_info* c) {
 void sched_schedule(registers* r) {
   lapic_stop_timer();
 
-  vmm_switch_pm(vmm_kernel_pm);
-
   cpu_info* c = this_cpu();
 
   if (c->task_current != NULL) {
     c->task_current->ctx = *r;
     c->task_current->gs = read_kernel_gs();
+    c->task_current->pm = this_cpu()->pm;
     __asm__ volatile ("fxsave %0" : : "m"(c->task_current->fxsave));
   }
 

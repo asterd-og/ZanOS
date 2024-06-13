@@ -18,10 +18,13 @@ typedef struct heap_block {
 typedef struct {
   atomic_lock hl;
   heap_block* block_head;
+  pagemap* pm;
 } heap;
 
-heap* heap_create();
+heap* heap_create(pagemap* pm);
 
 void* heap_alloc(heap* h, u64 size);
 void heap_free(heap* h, void* ptr);
 void* heap_realloc(heap* h, void* ptr, u64 size);
+
+uptr heap_get_allocation_paddr(heap* h, uptr ptr);

@@ -18,6 +18,8 @@ typedef struct {
   u64 task_idx;
   task_ctrl* task_list[256];
   task_ctrl* task_current;
+
+  atomic_lock sched_lock;
 } cpu_info;
 
 void smp_init();

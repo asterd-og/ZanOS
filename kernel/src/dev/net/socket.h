@@ -2,7 +2,7 @@
 
 #include <types.h>
 #include <fs/vfs.h>
-#include <lib/semaphore.h>
+#include <lib/fifo.h>
 #include <sched/sched.h>
 
 #define SOCK_LOCAL 0x1
@@ -16,13 +16,11 @@
 
 #define SOCK_MAX_REQ_COUNT 0x10
 
-typedef struct socket_data {
+typedef struct socket_message {
   u64 sender; // Server? client? contains sender's TID.
   u8* buffer;
   usize size;
-  struct socket_data* next;
-  struct socket_data* prev;
-} socket_data;
+} socket_message;
 
 typedef struct socket {
   task_ctrl* parent;
@@ -31,17 +29,14 @@ typedef struct socket {
   u64 buf_size;
   u64 flags;
   u64 messages;
-  u8* buffer;
 
   bool connected;
   
   char* address;
   int addrlen;
 
-  socket_data* data_head;
-
-  socket_data* read_data;
-  socket_data* write_data;
+  fifo* buffer;
+  socket_message* temp_msg;
   
   u64 max_conn;
   u64 conn_count;

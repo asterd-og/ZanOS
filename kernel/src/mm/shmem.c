@@ -9,7 +9,7 @@ u64 shmem_count = 0;
 u64 shmem_create(uptr addr, usize size, u16 max_conn, u64 flags) {
   shmem_chunk* shmem = (shmem_chunk*)kmalloc(sizeof(shmem_chunk));
   shmem->id = shmem_count;
-  shmem->addr = addr;
+  shmem->addr = heap_get_allocation_paddr(this_cpu()->task_current->heap_area, addr);
   shmem->size = size;
   shmem->conn_count = 0;
   shmem->max_conn = max_conn;

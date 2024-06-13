@@ -5,9 +5,6 @@
 #include <sched/sched.h>
 #include <sys/smp.h>
 
-// TODO: Change sockets to use buffers instead of linked list
-// Did that just to test some shit.
-
 socket* sock_list[1024];
 u64 sock_idx = 0;
 
@@ -18,25 +15,16 @@ int socket_read(vfs_node* node, u8* buffer, u32 count) {
   while (!(sock->flags & SOCK_MESSAGES))
     yield(); // Poll this socket until it's ready to be read from. Yield to save CPU time.
 
-  if (sock->read_data == sock->data_head)
-    sock->read_data = sock->read_data->next;
-  socket_data* data = sock->read_data;
-
-  usize size = (count > data->size ? data->size : count);
-  memcpy(buffer, data->buffer, size);
-
-  kfree(data->buffer);
-  data->prev->next = data->next;
-  data->next->prev = data->prev;
-  kfree(data);
-
-  sock->read_data = sock->read_data->next;
+  fifo_pop(sock->buffer, sock->temp_msg);
+  int read = (count > sock->temp_msg->size ? sock->temp_msg->size : count);
+  memcpy(buffer, sock->temp_msg->buffer, read);
+  kfree(sock->temp_msg->buffer);
 
   sock->messages--;
   if (sock->messages == 0)
     sock->flags &= ~SOCK_MESSAGES;
 
-  return size;
+  return read;
 }
 
 int socket_write(vfs_node* node, u8* buffer, u32 count) {
@@ -44,20 +32,15 @@ int socket_write(vfs_node* node, u8* buffer, u32 count) {
   if (!sock) return -1;
 
   while (sock->flags & SOCK_WRITING)
-    yield(); // Poll this socket until it's ready to be written to!
+    yield(); // Poll this socket until it's ready to be written to.
+  sock->flags |= SOCK_WRITING;
 
-  socket_data* data = (socket_data*)kmalloc(sizeof(socket_data));
-  data->next = sock->data_head;
-  data->prev = sock->data_head->prev;
-  sock->data_head->prev->next = data;
-  sock->data_head->prev = data;
+  sock->temp_msg->sender = this_cpu()->task_current->id;
+  sock->temp_msg->buffer = (u8*)kmalloc(count);
+  sock->temp_msg->size = count;
+  memcpy(sock->temp_msg->buffer, buffer, count);
 
-  data->size = count;
-
-  data->sender = this_cpu()->task_current->id;
-
-  data->buffer = (u8*)kmalloc(count);
-  memcpy(data->buffer, buffer, count);
+  fifo_push(sock->buffer, sock->temp_msg);
 
   sock->messages++;
   sock->flags &= ~SOCK_WRITING;
@@ -72,12 +55,8 @@ socket* socket_open(task_ctrl* parent, u8 type, u64 buf_size, u64 max_conn) {
   sock->buf_size = buf_size;
   sock->flags = 0;
 
-  sock->data_head = (socket_data*)kmalloc(sizeof(socket_data));
-  sock->data_head->next = sock->data_head;
-  sock->data_head->prev = sock->data_head;
-
-  sock->read_data = sock->data_head;
-  sock->write_data = sock->data_head;
+  sock->buffer = fifo_create(buf_size / sizeof(socket_message), sizeof(socket_message));
+  sock->temp_msg = (socket_message*)kmalloc(sizeof(socket_message));
 
   sock->addrlen = 0;
 
@@ -179,6 +158,6 @@ u64 socket_poll(socket* sock) {
 }
 
 u64 socket_msg_sender(socket* sock) {
-  if (sock->read_data->next == sock->data_head) return 0;
-  return sock->read_data->next->sender;
+  fifo_get(sock->buffer, sock->temp_msg);
+  return sock->temp_msg->sender;
 }

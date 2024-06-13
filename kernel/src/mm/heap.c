@@ -3,24 +3,23 @@
 #include <dev/char/serial.h>
 #include <sys/smp.h>
 
-heap* heap_create() {
+heap* heap_create(pagemap* pm) {
   heap* h = (heap*)HIGHER_HALF(pmm_alloc(1));
   h->block_head = (heap_block*)HIGHER_HALF(pmm_alloc(1));
   h->block_head->magic = HEAP_MAGIC;
   h->block_head->next = h->block_head->prev = h->block_head;
   h->block_head->size = 0;
   h->block_head->state = 1;
+  h->pm = pm;
   return h;
 }
 
 void* heap_alloc(heap* h, u64 size) {
   lock(&h->hl);
   u64 pages = DIV_ROUND_UP(sizeof(heap_block) + size, PAGE_SIZE);
-  u8* buf = pmm_alloc(pages);
-  if (h != kernel_heap)
-    vmm_map_user_range(this_cpu()->pm, (uptr)buf, (uptr)buf, pages, PTE_PRESENT | PTE_WRITABLE | PTE_USER);
-  if (h == kernel_heap)
-    buf = HIGHER_HALF(buf);
+  u8* buf = (h == kernel_heap ?
+             HIGHER_HALF(pmm_alloc(pages)) :
+             vmm_alloc(h->pm, pages, PTE_PRESENT | PTE_WRITABLE | PTE_USER));
   heap_block* block = (heap_block*)buf;
   block->magic = HEAP_MAGIC;
   block->size = size;
@@ -45,9 +44,12 @@ void heap_free(heap* h, void* ptr) {
   block->next->prev = block->prev;
   u64 pages = DIV_ROUND_UP(sizeof(heap_block) + block->size, PAGE_SIZE);
   u8* buf = (u8*)(ptr - sizeof(heap_block));
-  if (h == kernel_heap)
+  if (h == kernel_heap) {
     buf = PHYSICAL(buf);
-  pmm_free(buf, pages);
+    pmm_free(buf, pages);
+  } else {
+    vmm_free(this_cpu()->pm, buf, pages);
+  }
   unlock(&h->hl);
 }
 
@@ -63,4 +65,11 @@ void* heap_realloc(heap* h, void* ptr, u64 size) {
   memcpy(new_ptr, ptr, block->size);
   heap_free(h, ptr);
   return new_ptr;
+}
+
+uptr heap_get_allocation_paddr(heap* h, uptr ptr) {
+  heap_block* block = (heap_block*)(ptr - sizeof(heap_block));
+  if (block->magic != HEAP_MAGIC)
+    return 0;
+  return vmm_get_paddr(h->pm, (ptr - sizeof(heap_block)));
 }

@@ -3,7 +3,7 @@
 heap* kernel_heap;
 
 void kheap_init() {
-  kernel_heap = heap_create();
+  kernel_heap = heap_create(vmm_kernel_pm);
 }
 
 void* kmalloc(u64 size) {

@@ -32,6 +32,7 @@
     "semaphore.h": "c",
     "vmm.h": "c",
     "stdint.h": "c",
-    "keyboard.h": "c"
+    "keyboard.h": "c",
+    "fifo.h": "c"
   }
 }

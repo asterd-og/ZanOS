@@ -15,3 +15,4 @@ typedef struct {
 fifo* fifo_create(u64 cap, u64 item_size);
 void fifo_push(fifo* fifo, void* val);
 void fifo_pop(fifo* fifo, void* buffer);
+void fifo_get(fifo* fifo, void* buffer);
