@@ -2,6 +2,7 @@
 
 #include <types.h>
 #include <mm/pmm.h>
+#include <sys/idt.h>
 
 #define PTE_PRESENT (u64)1
 #define PTE_WRITABLE (u64)2
@@ -61,3 +62,5 @@ void* vmm_alloc(pagemap* pm, u64 pages, u64 flags);
 void vmm_free(pagemap* pm, void* ptr, u64 pages);
 
 uptr vmm_get_paddr(pagemap* pm, uptr ptr);
+
+bool vmm_handle_pf(registers* r);

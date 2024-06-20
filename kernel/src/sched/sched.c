@@ -10,7 +10,7 @@
 #include <fs/vfs.h>
 #include <mm/malloc.h>
 
-u64 sched_glob_id = 0;
+u64 sched_pid = 0;
 atomic_lock sched_lock;
 
 void sched_idle() {
@@ -21,152 +21,95 @@ void sched_idle() {
 
 void sched_init() {
   cpu_info* cpu = this_cpu();
-  cpu->task_idx = -1;
-  cpu->task_current = NULL;
-  sched_new_task(sched_idle, cpu->lapic_id, true);
+  cpu->idle_proc = sched_new_proc("Idle", sched_idle, SCHED_IDLE, cpu->lapic_id);
+  cpu->proc_idx = -1;
+  cpu->thread = NULL;
+  cpu->proc = NULL;
 }
 
-task_ctrl* sched_new_task(void* entry, u64 cpu, bool idle) {
+process* sched_new_proc(char* name, void* entry, u8 type, u64 cpu) {
   cpu_info* c = get_cpu(cpu);
-  lock(&c->sched_lock);
+  if (!c) return NULL;
 
-  task_ctrl* task = (task_ctrl*)kmalloc(sizeof(task_ctrl));
-  memset(task, 0, sizeof(task_ctrl));
+  process* proc = (process*)kmalloc(sizeof(process));
+  if (!proc) return NULL;
+  memset(proc, 0, sizeof(proc));
 
-  task->idle = idle;
-  task->user = false;
+  proc->pid = sched_pid++; // TODO: hash this
+  proc->cpu = cpu;
 
-  char* stack = (char*)kmalloc(2 * PAGE_SIZE);
-  task->ctx.rsp = (u64)(stack + (2 * PAGE_SIZE));
-  task->ctx.rip = (u64)entry;
-  task->ctx.cs  = 0x28;
-  task->ctx.ss  = 0x30;
-  task->ctx.rflags = 0x202;
+  proc->pm = vmm_new_pm();
 
-  task->pm = vmm_new_pm();
-  task->heap_area = heap_create(task->pm);
+  proc->type = type;
 
-  __asm__ volatile ("fxsave %0" : : "m"(task->fxsave));
+  proc->current_dir = vfs_root;
 
-  task->cpu_idx = c->task_count;
+  proc->children = list_create();
+  proc->threads = list_create();
 
-  task->id = (idle ? 0 : ++sched_glob_id);
-  task->cpu = cpu;
-  task->stack_base = (u64)stack;
-  task->sleeping_time = 0;
-  task->state = SCHED_RUNNING;
+  proc->name = (char*)kmalloc(strlen(name));
+  memcpy(proc->name, name, strlen(name));
 
-  task->current_dir = vfs_root;
+  proc->tidx = 0;
+  proc->scheduled = false;
 
-  c->task_list[c->task_count++] = task;
+  proc_add_thread(proc, entry);
+  list_add(c->proc_list, proc);
 
-  unlock(&c->sched_lock);
-
-  return task;
+  dprintf("New proc %lu created.\n", proc->pid);
+  return proc;
 }
 
-task_ctrl* sched_new_elf(char* path, u64 cpu, int argc, char** argv) {
-  cpu_info* c = get_cpu(cpu);
-  lock(&c->sched_lock);
+thread* proc_add_thread(process* proc, void* entry) {
+  thread* t = (thread*)kmalloc(sizeof(thread));
+  memset(t, 0, sizeof(thread));
 
-  task_ctrl* task = (task_ctrl*)kmalloc(sizeof(task_ctrl));
-  memset(task, 0, sizeof(task_ctrl));
+  t->pm = proc->pm;
+  t->heap_area = heap_create(t->pm);
 
-  task->pm = vmm_new_pm();
-  task->heap_area = heap_create(task->pm);
+  char* kstack = (char*)kmalloc(4 * PAGE_SIZE);
+  char* stack = (char*)kmalloc(4 * PAGE_SIZE);
 
-  task->idle = false;
+  t->stack_base = (u64)(stack + 4 * PAGE_SIZE);
+  t->kernel_stack = (u64)(kstack + 4 * PAGE_SIZE);
 
-  vfs_node* node = vfs_open(vfs_root, path);
-  u32 size = node->size;
-  u8* img = (u8*)kmalloc(size);
-  dprintf("sched_new_elf(): Loading elf '%s' with %u bytes.\n", node->name, size);
-  vfs_read(node, img, size);
-  u64 entry = elf_load(img, task->pm);
-  if (entry == (u64)-1) {
-    dprintf("sched_new_elf(): Failed to load elf.\n");
-    kfree(task);
-    unlock(&c->sched_lock);
+  t->stack_bottom = (u64)stack;
+  t->kstack_bottom = (u64)kstack;
+
+  t->gs = 0;
+
+  t->ctx.rip = (u64)entry;
+  t->ctx.rsp = (u64)t->stack_base;
+  t->ctx.cs  = 0x28;
+  t->ctx.ss  = 0x30;
+  t->ctx.rflags = 0x202;
+
+  t->sleeping_time = 0;
+
+  t->state = SCHED_RUNNING;
+
+  list_add(proc->threads, t);
+
+  return t;
+}
+
+process* sched_get_next_proc(cpu_info* c) {
+  c->proc_idx++;
+  if (c->proc_idx == c->proc_list->count) {
+    c->proc_idx = -1;
+    return c->idle_proc;
+  }
+  return (process*)list_get(c->proc_list, c->proc_idx);
+}
+
+thread* sched_get_next_thread(process* proc) {
+  proc->tidx++;
+  if (proc->tidx == proc->threads->count) {
+    proc->tidx = -1;
+    proc->scheduled = true;
     return NULL;
   }
-
-  task->ctx.rip = (u64)entry;
-  task->ctx.cs  = 0x43;
-  task->ctx.ss  = 0x3B;
-  task->ctx.rflags = 0x202;
-  task->kernel_stack = (u64)(kmalloc(3 * PAGE_SIZE)) + (3 * PAGE_SIZE);
-
-  __asm__ volatile ("fxsave %0" : : "m"(task->fxsave));
-
-  task->ctx.rdi = argc + 1; // argc
-
-  pagemap* bp = this_cpu()->pm;
-  vmm_switch_pm(task->pm);
-
-  char* stack = (char*)heap_alloc(task->heap_area, 3 * PAGE_SIZE);
-  task->ctx.rsp = (u64)(stack + (3 * PAGE_SIZE));
-  task->stack_base = (u64)stack;
-  memset(stack, 0, 3 * PAGE_SIZE);
-
-  char** argv_user = (char**)heap_alloc(task->heap_area, (argc + 1) * sizeof(char*));
-  argv_user[0] = (char*)heap_alloc(task->heap_area, strlen(node->name));
-  memcpy(argv_user[0], node->name, strlen(node->name));
-
-  if (argc > 0) {
-    for (int i = 0; i < argc; i++) {
-      int arg_len = strlen(argv[i]) + 1;
-      argv_user[i + 1] = (char*)heap_alloc(task->heap_area, arg_len);
-      memcpy(argv_user[i + 1], argv[i], arg_len);
-    }
-  }
-
-  vmm_switch_pm(bp);
-
-  task->ctx.rsi = (u64)argv_user;
-
-  task->cpu_idx = c->task_count;
-
-  task->id = ++sched_glob_id;
-  task->cpu = cpu;
-  task->sleeping_time = 0;
-  task->state = SCHED_RUNNING;
-
-  task->current_dir = node->parent;
-  task->fds[0] = fd_open(kb_node, FS_READ, 0); // stdin
-  task->fds[1] = fd_open(tty_node, FS_READ | FS_WRITE, 1); // stdout
-  task->fds[2] = fd_open(tty_node, FS_READ | FS_WRITE, 2); // stderr
-  task->fd_idx = 3;
-
-  c->task_list[c->task_count++] = task;
-
-  dprintf("sched_new_elf(): Task %ld created.\n", task->id);
-
-  unlock(&c->sched_lock);
-
-  return task;
-}
-
-task_ctrl* sched_get_next_task(cpu_info* c) {
-  c->task_idx++;
-  if (c->task_idx == c->task_count)
-    c->task_idx = 0;
-  
-  task_ctrl* task = c->task_list[c->task_idx];
-  while (task->state != SCHED_RUNNING) {
-    if (task->state == SCHED_SLEEPING) {
-      if (task->sleeping_time <= pit_ticks) {
-        task->state = SCHED_RUNNING; // change this to block and unblock task to jump to it
-        return task;
-      }
-    }
-
-    c->task_idx++;
-    if (c->task_idx == c->task_count)
-      c->task_idx = 0;
-
-    task = c->task_list[c->task_idx];
-  }
-  return task;
+  return (thread*)list_get(proc->threads, proc->tidx);
 }
 
 void sched_schedule(registers* r) {
@@ -174,78 +117,42 @@ void sched_schedule(registers* r) {
 
   cpu_info* c = this_cpu();
 
-  if (c->task_current != NULL) {
-    c->task_current->ctx = *r;
-    c->task_current->gs = read_kernel_gs();
-    c->task_current->pm = this_cpu()->pm;
-    __asm__ volatile ("fxsave %0" : : "m"(c->task_current->fxsave));
+  if (c->thread) {
+    thread* t = c->thread;
+    t->ctx = *r;
+    t->pm = c->pm;
+  } else
+    c->proc = sched_get_next_proc(c);
+
+  thread* next_thread = sched_get_next_thread(c->proc);
+
+  while (next_thread == NULL) {
+    // Probably has been scheduled already, or it just doesnt contain any threads
+    // either way, just jump to the next proc
+    c->proc = sched_get_next_proc(c);
+    next_thread = sched_get_next_thread(c->proc);
   }
 
-  c->task_current = sched_get_next_task(c);
-  *r = c->task_current->ctx;
-  vmm_switch_pm(c->task_current->pm);
-  __asm__ volatile ("fxrstor %0" : : "m"(c->task_current->fxsave));
+  c->thread = next_thread;
 
-  write_kernel_gs((u64)c->task_current);
+  *r = c->thread->ctx;
+  vmm_switch_pm(c->thread->pm);
 
   lapic_eoi();
-  lapic_oneshot(0x80, 5); // 5ms timeslice
+  lapic_oneshot(0x80, 5);
 }
 
 void yield() {
-  __asm__ volatile ("cli");
-  lapic_stop_timer();
-  lapic_ipi(lapic_get_id(), 0x80);
-  __asm__ volatile ("sti");
-}
-
-void block() {
-  cpu_info* c = this_cpu();
-  lapic_stop_timer();
-  lapic_ipi(c->lapic_id, 0x80);
-  c->task_current->state = SCHED_BLOCKED;
-  __asm__ volatile ("sti");
-}
-
-void unblock(task_ctrl* task) {
-  cpu_info* c = this_cpu();
-  lapic_stop_timer();
-  lapic_ipi(c->lapic_id, 0x80);
-  task->state = SCHED_RUNNING;
-  c->task_idx = task->cpu_idx-1;
-  __asm__ volatile ("sti");
 }
 
 void sleep(u64 ms) {
-  lapic_stop_timer();
-  lapic_ipi(this_cpu()->lapic_id, 0x80);
-  cpu_info* c = this_cpu();
-  c->task_current->sleeping_time = pit_ticks + ms;
-  c->task_current->state = SCHED_SLEEPING;
-  __asm__ volatile ("sti");
+  (void)ms;
 }
 
-void sched_kill(task_ctrl* task) {
-  if (task->state == SCHED_DEAD) return;
-  block();
+process* this_proc() {
+  return this_cpu()->proc;
 }
 
-task_ctrl* sched_get_task(u64 tid) {
-  cpu_info* c;
-  for (u64 id = 0; id < smp_cpu_count; id++) {
-    c = get_cpu(id);
-    for (u64 t = 0; t < c->task_count; t++)
-      if (c->task_list[t]->id == tid)
-        return c->task_list[t];
-  }
-  return NULL;
-}
-
-void sched_exit(int status) {
-  lapic_stop_timer();
-  cpu_info* c = this_cpu();
-  c->task_current->exit_status = status;
-  c->task_current->state = SCHED_DEAD;
-  lapic_ipi(this_cpu()->lapic_id, 0x80);
-  __asm__ volatile ("sti");
+thread* this_thread() {
+  return this_cpu()->thread;
 }

@@ -10,7 +10,7 @@ u64 syscall_opendir(syscall_args a) {
     return (u64)-1;
 
   DIR* dir = (DIR*)malloc(sizeof(DIR));
-  dir->node = vfs_open(this_cpu()->task_current->current_dir, path);
+  dir->node = vfs_open(this_proc()->current_dir, path);
   if (!dir->node) {
     free(dir);
     return (u64)NULL;

@@ -2,17 +2,15 @@
 #include <sys/smp.h>
 
 signal_handler sig_signal(int sig_no, signal_handler handler) {
-  cpu_info* c = this_cpu();
-  task_ctrl* task = c->task_list[c->task_idx];
-  signal_handler old = task->sigs[sig_no];
-  task->sigs[sig_no] = handler;
+  thread* thread = this_thread();
+  signal_handler old = thread->sigs[sig_no];
+  thread->sigs[sig_no] = handler;
   return old;
 }
 
 int sig_raise(int signal) {
-  cpu_info* c = this_cpu();
-  task_ctrl* task = c->task_list[c->task_idx];
-  if (task->sigs[signal] != NULL) task->sigs[signal](signal);
+  thread* thread = this_thread();
+  if (thread->sigs[signal] != NULL) thread->sigs[signal](signal);
   else sig_def_handler(signal);
   return 0;
 }
@@ -37,7 +35,6 @@ char* signals_to_str[] = {
 };
 
 void sig_def_handler(int signal) {
-  cpu_info* c = this_cpu();
-  printf("\033[38;2;255;0;0mSignal %d (%s) caught on task %ld.\033[0m\n", signal, signals_to_str[signal], c->task_current->id);
-  sched_kill(c->task_current);
+  process* proc = this_proc();
+  printf("\033[38;2;255;0;0mSignal %d (%s) caught on proc %lu.\033[0m\n", signal, signals_to_str[signal], proc->pid);
 }

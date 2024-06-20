@@ -6,16 +6,16 @@
 u64 syscall_open(syscall_args a) {
   char* filename = (char*)a.arg1;
   u64 flags = (u64)a.arg2;
-  task_ctrl* task = this_cpu()->task_current;
+  process* proc = this_proc();
 
   if (!filename) return (u64)-1;
 
-  vfs_node* node = vfs_open(task->current_dir, filename);
+  vfs_node* node = vfs_open(proc->current_dir, filename);
   if (!node) return (u64)-1;
 
-  u64 fd = task->fd_idx;
-  task->fds[fd] = fd_open(node, flags, fd);
-  task->fd_idx++;
+  u64 fd = proc->fd_idx;
+  proc->fds[fd] = fd_open(node, flags, fd);
+  proc->fd_idx++;
 
   return fd;
 }

@@ -6,6 +6,7 @@
 #include <dev/char/serial.h>
 #include <sched/sched.h>
 #include <mm/vmm.h>
+#include <lib/list.h>
 
 extern u32 bsp_lapic_id;
 extern u64 smp_cpu_count;
@@ -14,10 +15,14 @@ typedef struct {
   u64 lapic_id;
   pagemap* pm;
 
-  u64 task_count;
-  u64 task_idx;
-  task_ctrl* task_list[256];
-  task_ctrl* task_current;
+  list* proc_list;
+
+  process* proc;
+  thread* thread;
+
+  u64 proc_idx;
+
+  process* idle_proc;
 
   atomic_lock sched_lock;
 } cpu_info;

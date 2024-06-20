@@ -3,6 +3,8 @@
 #include <lib/libc.h>
 #include <dev/char/serial.h>
 #include <sys/smp.h>
+#include <sched/sched.h>
+#include <sched/signal.h>
 
 struct limine_kernel_address_request kernel_address_request = {
   .id = LIMINE_KERNEL_ADDRESS_REQUEST,
@@ -75,6 +77,14 @@ vma_region* vmm_get_region(pagemap* pm, uptr vaddr) {
   vma_region* region = pm->vma_head->next;
   for (; region != pm->vma_head; region = region->next)
     if (region->vaddr == vaddr)
+      return region;
+  return NULL;
+}
+
+vma_region* vmm_find_range(pagemap* pm, uptr vaddr) {
+  vma_region* region = pm->vma_head->next;
+  for (; region != pm->vma_head; region = region->next)
+    if (region->vaddr <= vaddr && region->end >= vaddr)
       return region;
   return NULL;
 }
@@ -211,4 +221,28 @@ uptr vmm_get_paddr(pagemap* pm, uptr ptr) {
   if (!region)
     return 0;
   return region->paddr;
+}
+
+bool vmm_handle_pf(registers* r) {
+  bool halt = false;
+  if (this_cpu()->pm == vmm_kernel_pm) {
+    printf("cpu%lu: Page fault. Died.\n", this_cpu()->lapic_id);
+    dprintf("cpu%lu: Page fault. Died.\n", this_cpu()->lapic_id);
+    halt = true;
+  } else {
+    dprintf("Segmentation fault on proc %lu\n", this_proc()->pid);
+    halt = false;
+  }
+  u64 cr2;
+  __asm__ volatile ("mov %%cr2, %0" : "=r"(cr2));
+  dprintf("RIP: 0x%lx RSP: 0x%lx CR2: 0x%lx\n", r->rip, r->rsp, cr2);
+  if (!(r->err_code & PTE_PRESENT)) dprintf("Page was not present, ");
+  else dprintf("Page was present, ");
+  if (!(r->err_code & PTE_WRITABLE)) dprintf("was not writable, ");
+  else dprintf("was writable, ");
+  if (!(r->err_code & PTE_USER)) dprintf("and was not user.\n");
+  else dprintf("and was user.\n");
+  if (!halt)
+    sig_raise(SIGSEGV);
+  return halt;
 }

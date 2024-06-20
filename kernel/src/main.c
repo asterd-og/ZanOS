@@ -82,9 +82,14 @@ void hcf() {
 }
 
 void kernel_task() {
-  sched_new_elf("/tmpfs/bin/zws", 1, 1, (char*[]){""});
-  sched_new_elf("/tmpfs/bin/zterm", 1, 1, (char*[]){""});
   while (1) {
+    printf("Thread 1\n");
+  }
+}
+
+void kernel_task2() {
+  while (1) {
+    printf("Thread 2\n");
   }
 }
 
@@ -158,12 +163,14 @@ void _start(void) {
   vfs_init();
   tmpfs_init(get_mod_addr(0));
   dev_init();
+  serial_init();
   keyboard_init();
   tty_init();
   fb_init();
   mouse_init();
 
-  sched_new_task(kernel_task, 0, false);
+  process* kproc = sched_new_proc("Kernel", kernel_task, SCHED_KERNEL, 1);
+  proc_add_thread(kproc, kernel_task2, 1);
   lapic_ipi(bsp_lapic_id, 0x80);
 
   while (true) {

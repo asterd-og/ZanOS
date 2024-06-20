@@ -6,7 +6,7 @@
 u64 syscall_getcwd(syscall_args a) {
   char* buf = (char*)a.arg1;
   size_t size = (size_t)a.arg2;
-  task_ctrl* task = this_cpu()->task_current;
+  process* proc = this_proc();
   if (!buf) {
     if (!size) size = 256;
     buf = (char*)malloc(size);
@@ -14,7 +14,7 @@ u64 syscall_getcwd(syscall_args a) {
   memset(buf, 0, size);
   vfs_node* nodes[128];
   u64 i = 1;
-  vfs_node* current = task->current_dir;
+  vfs_node* current = proc->current_dir;
   while (current != NULL) {
     nodes[i++] = current;
     current = current->parent;

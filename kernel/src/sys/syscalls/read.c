@@ -7,11 +7,11 @@ u64 syscall_read(syscall_args a) {
   u64 fd = (u64)a.arg1;
   void* buffer = a.arg2;
   size_t size = (size_t)a.arg3;
-  task_ctrl* task = this_cpu()->task_current;
+  process* proc = this_proc();
 
-  if (!task->fds[fd].vnode)
+  if (!proc->fds[fd].vnode)
     return -1;
   
-  int inc = vfs_read(task->fds[fd].vnode, buffer, size);
+  int inc = vfs_read(proc->fds[fd].vnode, buffer, size);
   return inc;
 }

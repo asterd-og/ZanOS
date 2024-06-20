@@ -91,6 +91,10 @@ vfs_node* vfs_open(vfs_node* vnode, char* path) {
   return current;
 }
 
+u64 vfs_poll(vfs_node* vnode) {
+  return vnode->poll(vnode);
+}
+
 void vfs_destroy(vfs_node* vnode) {
   if (!(vnode->perms & VFS_DESTROY) || vnode->open)
     return;

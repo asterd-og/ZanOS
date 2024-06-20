@@ -6,7 +6,6 @@
 typedef struct {
   i32 inc;
   
-  task_ctrl* blocked_tasks[256];
   u8 idx;
   u8 fidx; // fifo idx
 } semaphore;

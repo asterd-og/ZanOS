@@ -39,17 +39,21 @@ void* syscall_table[] = {
   syscall_readdir,         // 18
   syscall_closedir,        // 19
 
-  syscall_sock_new,        // 20
-  syscall_sock_bind,       // 21
-  syscall_sock_connect,    // 22
-  syscall_sock_accept,     // 23
-  syscall_sock_get_ready,  // 24
-  syscall_sock_poll,       // 25
+  syscall_poll,            // 20
+
+  syscall_sock_new,        // 21
+  syscall_sock_bind,       // 22
+  syscall_sock_connect,    // 23
+  syscall_sock_accept,     // 24
+  syscall_sock_get_ready,  // 25
   syscall_sock_msg_sender, // 26
 
   syscall_shmem,           // 27
   syscall_shmem_connect,   // 28
   syscall_shmem_get,       // 29
+
+  syscall_spawn,           // 30
+  syscall_get_id,          // 31
 };
 
 void syscall_handle(registers* r) {

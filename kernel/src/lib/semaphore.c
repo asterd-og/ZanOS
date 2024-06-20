@@ -7,15 +7,11 @@
 void wait(semaphore* s) {
   s->inc--;
   if (s->inc < 0) {
-    task_ctrl* task = this_cpu()->task_current;
-    s->blocked_tasks[s->idx++] = task;
-    block();
   }
 }
 
 void signal(semaphore* s) {
   if (s->inc++ < 0) {
-    unblock(s->blocked_tasks[s->fidx++]);
   }
 }
 

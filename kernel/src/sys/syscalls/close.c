@@ -5,13 +5,13 @@
 
 u64 syscall_close(syscall_args a) {
   u64 fd = (u64)a.arg1;
-  task_ctrl* task = this_cpu()->task_current;
+  process* proc = this_proc();
   
-  if (!task->fds[fd].vnode)
+  if (!proc->fds[fd].vnode)
     return (u64)-1;
   
-  vfs_destroy(task->fds[fd].vnode);
-  task->fds[fd] = (file_descriptor){0, 0, 0, 0};
+  vfs_destroy(proc->fds[fd].vnode);
+  proc->fds[fd] = (file_descriptor){0, 0, 0, 0};
 
   return 0;
 }

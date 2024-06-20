@@ -13,9 +13,9 @@ u64 syscall_getsz(syscall_args a) {
   syscall_file* file = (syscall_file*)a.arg1;
   if (!file) return (u64)-1;
 
-  task_ctrl* task = this_cpu()->task_current;
+  process* proc = this_proc();
   
-  file_descriptor fd = task->fds[file->fd_num];
+  file_descriptor fd = proc->fds[file->fd_num];
   if (!fd.vnode) return (u64)-1;
 
   return fd.vnode->size;

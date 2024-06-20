@@ -20,6 +20,6 @@ i32 fprintf(int fd, char* fmt, ...) {
   char buf[1024];
   int ret = vsprintf(buf, fmt, va);
   va_end(va);
-  vfs_write(this_cpu()->task_current->fds[fd].vnode, (u8*)buf, ret);
+  vfs_write(this_proc()->fds[fd].vnode, (u8*)buf, ret);
   return ret;
 }
