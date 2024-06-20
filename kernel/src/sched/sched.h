@@ -74,7 +74,7 @@ typedef struct process {
 void sched_init();
 
 process* sched_new_proc(char* name, void* entry, u8 type, u64 cpu);
-thread* proc_add_thread(process* proc, void* entry, u64 cpu); // Adds a thread to the process
+thread* proc_add_thread(process* proc, void* entry); // Adds a thread to the process
 
 process* this_proc();
 thread* this_thread();

@@ -170,7 +170,7 @@ void _start(void) {
   mouse_init();
 
   process* kproc = sched_new_proc("Kernel", kernel_task, SCHED_KERNEL, 1);
-  proc_add_thread(kproc, kernel_task2, 1);
+  proc_add_thread(kproc, kernel_task2);
   lapic_ipi(bsp_lapic_id, 0x80);
 
   while (true) {
