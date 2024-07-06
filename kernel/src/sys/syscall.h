@@ -10,6 +10,7 @@ typedef struct {
   void* arg4;
   void* arg5;
   void* arg6;
+  registers* r;
 } syscall_args;
 
 void syscall_handle(registers* r);
@@ -41,16 +42,9 @@ u64 syscall_closedir(syscall_args a);
 
 u64 syscall_poll(syscall_args a);
 
-u64 syscall_sock_new(syscall_args a);
-u64 syscall_sock_bind(syscall_args a);
-u64 syscall_sock_connect(syscall_args a);
-u64 syscall_sock_accept(syscall_args a);
-u64 syscall_sock_get_ready(syscall_args a);
-u64 syscall_sock_msg_sender(syscall_args a);
-
 u64 syscall_shmem(syscall_args a);
 u64 syscall_shmem_connect(syscall_args a);
 u64 syscall_shmem_get(syscall_args a);
 
-u64 syscall_spawn(syscall_args a);
-u64 syscall_get_id(syscall_args a);
+u64 syscall_fork(syscall_args a);
+u64 syscall_getpid(syscall_args a);

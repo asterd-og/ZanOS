@@ -44,6 +44,11 @@ typedef struct {
   u64 ss;
 } __attribute__((packed)) registers;
 
+typedef struct stackframe {
+  struct stackframe* rbp;
+  u64 rip;
+} stackframe;
+
 void idt_init();
 void idt_reinit();
 

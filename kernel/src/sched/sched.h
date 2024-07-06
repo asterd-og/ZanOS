@@ -8,6 +8,8 @@
 #include <fs/fs.h>
 #include <lib/list.h>
 
+#define SCHED_STACK_SIZE (4 * PAGE_SIZE)
+
 enum {
   SCHED_STARTING,
   SCHED_RUNNING,
@@ -24,12 +26,17 @@ enum {
 
 typedef void(*signal_handler)(int);
 
+struct process;
+
 typedef struct {
   u64 stack_base;   // gs:0
   u64 kernel_stack; // gs:8
 
   u64 stack_bottom;
   u64 kstack_bottom;
+
+  struct process* parent;
+  u64 idx; // idx in proc thread list
 
   u64 gs;
 
@@ -49,6 +56,7 @@ typedef struct {
 typedef struct process {
   u64 pid;
   u64 cpu;
+  u64 idx; // index inside the cpu proc list
 
   pagemap* pm;
 
@@ -63,7 +71,6 @@ typedef struct process {
   char* name;
 
   list* threads;  // thread
-  list* children; // process
 
   struct process* parent;
 
@@ -73,26 +80,21 @@ typedef struct process {
 
 void sched_init();
 
-process* sched_new_proc(char* name, void* entry, u8 type, u64 cpu);
-thread* proc_add_thread(process* proc, void* entry); // Adds a thread to the process
+extern list* sched_sleep_list;
+
+process* sched_new_proc(char* name, u8 type, u64 cpu, bool child);
+thread* proc_add_thread(process* proc, void* entry, bool fork); // Adds a thread to the process
+thread* proc_add_elf_thread(process* proc, char* path);
 
 process* this_proc();
 thread* this_thread();
 
-//task_ctrl* sched_new_task(void* entry, u64 cpu, bool idle);
-
 char** sched_create_argv(int argc, ...);
-//task_ctrl* sched_new_elf(char* path, u64 cpu, int argc, char** argv);
-
 void sched_schedule(registers* r);
 
 void block();
-//void unblock(task_ctrl* task);
+void unblock(thread* t);
 void yield();
 void sleep(u64 ms);
 
-//void sched_block(task_ctrl* task, u8 reason);
-//void sched_unblock(task_ctrl* task);
-//void sched_kill(task_ctrl* task);
-//task_ctrl* sched_get_task(u64 id);
 void sched_exit(int status);

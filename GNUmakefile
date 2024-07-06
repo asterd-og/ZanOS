@@ -58,7 +58,7 @@ run-debug: $(IMAGE_NAME).iso
 	qemu-system-x86_64 -debugcon stdio \
 	-m 2G \
 	-cdrom $(IMAGE_NAME).iso \
-	-S -s \
+	-d int \
 	-boot d \
 	-smp 4 \
 	-drive file="disk.img",format=raw \

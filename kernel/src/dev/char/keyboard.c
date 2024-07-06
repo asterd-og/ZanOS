@@ -19,9 +19,6 @@ fifo* keyboard_fifo;
 
 vfs_node* kb_node = NULL;
 
-// TODO: Make a FIFO of keyboard event, when a fread occurs
-// just read from that
-
 atomic_lock kb_lock;
 
 void keyboard_handle_key(u8 key) {

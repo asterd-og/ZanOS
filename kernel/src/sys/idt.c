@@ -89,6 +89,15 @@ void irq_unregister(u8 vec) {
   irq_handlers[vec] = NULL;
 }
 
+void backtrace() {
+  struct stackframe *stk;
+  __asm__ volatile ("mov %%rbp, %0" : "=r"(stk));
+  for (u64 i = 0; i < 10 && stk; ++i) {
+    dprintf("  %lx\n", stk->rip);
+    stk = stk->rbp;
+  }
+}
+
 void isr_handler(registers* r) {
   if (r->int_no == 0xff)
     return; // Spurious interrupt
@@ -101,6 +110,8 @@ void isr_handler(registers* r) {
   
   __asm__ volatile ("cli");
   dprintf("isr_handler(): System fault! %s. RIP: %llx. CS: %x SS: %x\n", isr_errors[r->int_no], r->rip, r->cs, r->ss);
+  dprintf("Backtrace:\n");
+  backtrace();
   for (;;) __asm__ volatile("hlt");
 }
 

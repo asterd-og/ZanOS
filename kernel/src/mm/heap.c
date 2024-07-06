@@ -71,5 +71,22 @@ uptr heap_get_allocation_paddr(heap* h, uptr ptr) {
   heap_block* block = (heap_block*)(ptr - sizeof(heap_block));
   if (block->magic != HEAP_MAGIC)
     return 0;
-  return vmm_get_paddr(h->pm, (ptr - sizeof(heap_block)));
+  return vmm_get_region_paddr(h->pm, (ptr - sizeof(heap_block)));
+}
+
+void heap_clone(heap* h, heap* clone) {
+  // Here we set the clone block head to the original block head,
+  // which contains the linked list of allocations!
+
+  clone->block_head = h->block_head;
+}
+
+void heap_destroy(heap* h) {
+  for (heap_block* block = h->block_head->next; block != h->block_head; block = block->next) {
+    u8* buf = (u8*)block;
+    vma_region* region = vmm_find_range(h->pm, (uptr)buf);
+    if (region->ref_count >= 1) {
+      vmm_free(h->pm, (void*)region->vaddr, region->pages);
+    }
+  }
 }

@@ -64,7 +64,6 @@ u64 pmm_find_pages(usize n) {
   u64 first_page = pmm_last_page;
   while (pages < n) {
     if (pmm_last_page == pmm_total_pages) {
-      dprintf("pmm_alloc(): Ran out of memory.\n");
       return 0;
     }
     if (bitmap_get(pmm_bitmap, pmm_last_page + pages) == 0) {

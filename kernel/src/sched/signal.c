@@ -37,4 +37,7 @@ char* signals_to_str[] = {
 void sig_def_handler(int signal) {
   process* proc = this_proc();
   printf("\033[38;2;255;0;0mSignal %d (%s) caught on proc %lu.\033[0m\n", signal, signals_to_str[signal], proc->pid);
+  this_thread()->state = SCHED_DEAD;
+  lapic_ipi(this_cpu()->lapic_id, 0x80);
+  __asm__ volatile ("sti");
 }

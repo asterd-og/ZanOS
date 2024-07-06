@@ -25,6 +25,9 @@ typedef struct {
   process* idle_proc;
 
   atomic_lock sched_lock;
+
+  bool scheduled_threads;
+  bool scheduled_children;
 } cpu_info;
 
 void smp_init();

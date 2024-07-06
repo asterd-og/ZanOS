@@ -28,3 +28,6 @@ void heap_free(heap* h, void* ptr);
 void* heap_realloc(heap* h, void* ptr, u64 size);
 
 uptr heap_get_allocation_paddr(heap* h, uptr ptr);
+
+void heap_clone(heap* h, heap* clone);
+void heap_destroy(heap* h);

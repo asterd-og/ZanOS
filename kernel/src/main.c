@@ -8,6 +8,7 @@
 #include <sys/user.h>
 #include <lib/printf.h>
 #include <lib/libc.h>
+#include <lib/elf.h>
 #include <flanterm/flanterm.h>
 #include <flanterm/backends/fb.h>
 #include <mm/pmm.h>
@@ -73,24 +74,15 @@ struct limine_stack_size_request stack_sz_request = {
 };
 
 void putchar_(char c) {
+  static atomic_lock l;
+  lock(&l);
   char str[1] = {c};
   flanterm_write(ft_ctx, str, 1);
+  unlock(&l);
 }
 
 void hcf() {
   for (;;) __asm__ volatile ("hlt");
-}
-
-void kernel_task() {
-  while (1) {
-    printf("Thread 1\n");
-  }
-}
-
-void kernel_task2() {
-  while (1) {
-    printf("Thread 2\n");
-  }
 }
 
 // The following will be our kernel's entry point.
@@ -152,6 +144,7 @@ void _start(void) {
     printf("This CPU does NOT support FPU.\n");
     hcf();
   }
+
   smp_init();
   sched_init();
   user_init();
@@ -169,8 +162,9 @@ void _start(void) {
   fb_init();
   mouse_init();
 
-  process* kproc = sched_new_proc("Kernel", kernel_task, SCHED_KERNEL, 1);
-  proc_add_thread(kproc, kernel_task2);
+  process* proc = sched_new_proc("Test", SCHED_USER, 1, false);
+  proc_add_elf_thread(proc, "/tmpfs/bin/test");
+
   lapic_ipi(bsp_lapic_id, 0x80);
 
   while (true) {

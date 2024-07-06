@@ -11,7 +11,7 @@ vfs_node* tty_node;
 
 i32 tty_write(struct vfs_node* vnode, u8* buffer, u32 count) {
   (void)vnode;
-  printf("%s", buffer);
+  printf("%.*s", count, buffer);
   return count;
 }
 

@@ -51,7 +51,7 @@ void vmm_init() {
   dprintf("vmm_init(): VMM Initialised. Kernel's page map located at %lx.\n", (u64)vmm_kernel_pm);
 }
 
-void vmm_create_region(pagemap* pm, uptr vaddr, uptr paddr, u64 pages, u64 flags) {
+vma_region* vmm_create_region(pagemap* pm, uptr vaddr, uptr paddr, u64 pages, u64 flags) {
   vma_region* region = (vma_region*)HIGHER_HALF(pmm_alloc(1));
   region->vaddr = vaddr;
   region->end = vaddr + (pages * PAGE_SIZE);
@@ -59,11 +59,33 @@ void vmm_create_region(pagemap* pm, uptr vaddr, uptr paddr, u64 pages, u64 flags
   region->pages = pages;
   region->flags = flags;
 
+  region->ref_count = 0;
+
   region->prev = pm->vma_head->prev;
   region->next = pm->vma_head;
 
   pm->vma_head->prev->next = region;
   pm->vma_head->prev = region;
+
+  return region;
+}
+
+vma_region* vmm_insert_after(vma_region* prev, uptr vaddr, uptr paddr, u64 pages, u64 flags) {
+  vma_region* region = (vma_region*)HIGHER_HALF(pmm_alloc(1));
+  region->vaddr = vaddr;
+  region->end = vaddr + (pages * PAGE_SIZE);
+  region->paddr = paddr;
+  region->pages = pages;
+  region->flags = flags;
+  region->ref_count = 0;
+
+  region->prev = prev;
+  region->next = prev->next;
+
+  prev->next->prev = region;
+  prev->next = region;
+
+  return region;
 }
 
 void vmm_delete_region(vma_region* region) {
@@ -119,6 +141,18 @@ pagemap* vmm_new_pm() {
   return pm;
 }
 
+void vmm_destroy_pm(pagemap* pm) {
+  vma_region* next;
+  for (vma_region* region = pm->vma_head->next; region != pm->vma_head;) {
+    next = region->next;
+    pmm_free(PHYSICAL(region), 1);
+    region = next;
+  }
+  pmm_free(PHYSICAL(pm->vma_head), 1);
+  pmm_free(PHYSICAL(pm->top_lvl), 1);
+  pmm_free(PHYSICAL(pm), 1);
+}
+
 void vmm_switch_pm_nocpu(pagemap* pm) {
   __asm__ volatile ("mov %0, %%cr3" : : "r"((u64)PHYSICAL(pm->top_lvl)) : "memory");
 }
@@ -147,9 +181,9 @@ void vmm_map_user(pagemap* pm, uptr vaddr, uptr paddr, u64 flags) {
   uptr pml3_entry = (vaddr >> 30) & 0x1ff;
   uptr pml4_entry = (vaddr >> 39) & 0x1ff;
 
-  uptr* pml3 = vmm_get_next_lvl(pm->top_lvl, pml4_entry, flags, true);       // pml4[pml4Entry] = pml3
-  uptr* pml2 = vmm_get_next_lvl(pml3, pml3_entry, flags, true);     // pml3[pml3Entry] = pml2
-  uptr* pml1 = vmm_get_next_lvl(pml2, pml2_entry, flags, true);     // pml2[pml2Entry] = pml1
+  uptr* pml3 = vmm_get_next_lvl(pm->top_lvl, pml4_entry, flags, true);
+  uptr* pml2 = vmm_get_next_lvl(pml3, pml3_entry, flags, true);
+  uptr* pml1 = vmm_get_next_lvl(pml2, pml2_entry, flags, true);
 
   pml1[pml1_entry] = paddr | flags;
 }
@@ -170,16 +204,42 @@ void vmm_unmap(pagemap* pm, uptr vaddr) {
   __asm__ volatile ("invlpg (%0)" : : "b"(vaddr) : "memory");
 }
 
+uptr vmm_get_page(pagemap* pm, uptr vaddr) {
+  uptr pml1_entry = (vaddr >> 12) & 0x1ff;
+  uptr pml2_entry = (vaddr >> 21) & 0x1ff;
+  uptr pml3_entry = (vaddr >> 30) & 0x1ff;
+  uptr pml4_entry = (vaddr >> 39) & 0x1ff;
+
+  uptr* pml3 = vmm_get_next_lvl(pm->top_lvl, pml4_entry, 0, false);
+  if (!pml3) return 0;
+  uptr* pml2 = vmm_get_next_lvl(pml3, pml3_entry, 0, false);
+  if (!pml2) return 0;
+  uptr* pml1 = vmm_get_next_lvl(pml2, pml2_entry, 0, false);
+  if (!pml1) return 0;
+
+  return pml1[pml1_entry];
+}
+
+uptr vmm_get_pml2(pagemap* pm, uptr vaddr) {
+  uptr pml2_entry = (vaddr >> 21) & 0x1ff;
+  uptr pml3_entry = (vaddr >> 30) & 0x1ff;
+  uptr pml4_entry = (vaddr >> 39) & 0x1ff;
+
+  uptr* pml3 = vmm_get_next_lvl(pm->top_lvl, pml4_entry, 0, false);
+  if (!pml3) return 0;
+  uptr* pml2 = vmm_get_next_lvl(pml3, pml3_entry, 0, false);
+  if (!pml2) return 0;
+  return pml2[pml2_entry];
+}
+
 void vmm_map_range(pagemap* pm, uptr vaddr, uptr paddr, u64 pages, u64 flags) {
   for (u64 i = 0; i < pages; i++)
     vmm_map(pm, vaddr + (i * PAGE_SIZE), paddr + (i * PAGE_SIZE), flags);
-  vmm_create_region(pm, vaddr, paddr, pages, flags);
 }
 
 void vmm_map_user_range(pagemap* pm, uptr vaddr, uptr paddr, u64 pages, u64 flags) {
   for (u64 i = 0; i < pages; i++)
     vmm_map_user(pm, vaddr + (i * PAGE_SIZE), paddr + (i * PAGE_SIZE), flags);
-  vmm_create_region(pm, vaddr, paddr, pages, flags);
 }
 
 void vmm_unmap_range(pagemap* pm, uptr vaddr, u64 pages) {
@@ -192,6 +252,7 @@ void* vmm_alloc(pagemap* pm, u64 pages, u64 flags) {
   if (!pg) return NULL;
   // In case we didn't find a hole, create a new region
   uptr vaddr = pm->vma_head->prev->end + PAGE_SIZE;
+  bool found = false;
   vma_region* region = pm->vma_head->next;
   for (; region != pm->vma_head; region = region->next) {
     if (region->end >= region->next->vaddr)
@@ -199,10 +260,14 @@ void* vmm_alloc(pagemap* pm, u64 pages, u64 flags) {
     // We found a hole, now check it's size
     if (region->next->vaddr - region->end >= ((pages + 1) * PAGE_SIZE)) {
       vaddr = region->end + PAGE_SIZE;
+      region = vmm_insert_after(region, vaddr, (uptr)pg, pages, flags);
+      found = true;
       break;
     }
   }
+  if (!found) region = vmm_create_region(pm, vaddr, (uptr)pg, pages, flags);
   vmm_map_user_range(pm, vaddr, (uptr)pg, pages, flags);
+  region->ref_count++;
   return (void*)vaddr;
 }
 
@@ -216,11 +281,16 @@ void vmm_free(pagemap* pm, void* ptr, u64 pages) {
   vmm_delete_region(region);
 }
 
-uptr vmm_get_paddr(pagemap* pm, uptr ptr) {
+uptr vmm_get_region_paddr(pagemap* pm, uptr ptr) {
   vma_region* region = vmm_get_region(pm, ptr);
   if (!region)
     return 0;
   return region->paddr;
+}
+
+void vmm_invlpg_range(uptr vaddr, u64 pages) {
+  for (u64 i = 0; i < pages; i++)
+    __asm__ volatile ("invlpg (%0)" : : "r"(vaddr + (i * PAGE_SIZE)));
 }
 
 bool vmm_handle_pf(registers* r) {
@@ -229,20 +299,68 @@ bool vmm_handle_pf(registers* r) {
     printf("cpu%lu: Page fault. Died.\n", this_cpu()->lapic_id);
     dprintf("cpu%lu: Page fault. Died.\n", this_cpu()->lapic_id);
     halt = true;
-  } else {
-    dprintf("Segmentation fault on proc %lu\n", this_proc()->pid);
+  } else
     halt = false;
-  }
   u64 cr2;
   __asm__ volatile ("mov %%cr2, %0" : "=r"(cr2));
-  dprintf("RIP: 0x%lx RSP: 0x%lx CR2: 0x%lx\n", r->rip, r->rsp, cr2);
-  if (!(r->err_code & PTE_PRESENT)) dprintf("Page was not present, ");
-  else dprintf("Page was present, ");
-  if (!(r->err_code & PTE_WRITABLE)) dprintf("was not writable, ");
-  else dprintf("was writable, ");
-  if (!(r->err_code & PTE_USER)) dprintf("and was not user.\n");
-  else dprintf("and was user.\n");
+  pagemap* pm = this_thread()->pm;
+  u64 vaddr = ALIGN_DOWN(cr2, PAGE_SIZE);
+  uptr page = vmm_get_page(pm, vaddr);
+  uptr paddr = page & ~0xFFF;
+  if (!halt) {
+    // Check if the page is a CoW
+    if (!(page & PTE_PRESENT))
+      goto nocow;
+    if (page & PTE_WRITABLE)
+      goto nocow;
+
+    vma_region* region = vmm_find_range(pm, cr2);
+    if (!region)
+      goto nocow;
+
+    void* newpage = pmm_alloc(region->pages);
+    memcpy(HIGHER_HALF(newpage), HIGHER_HALF(region->paddr), region->pages * PAGE_SIZE);
+
+    // It is CoW now we just need to re-map it.
+    vmm_map_range(pm, region->vaddr, (uptr)newpage, region->pages, region->flags);
+    region->paddr = (uptr)newpage;
+    region->ref_count++;
+
+    vmm_invlpg_range(region->vaddr, region->pages);
+
+    return false;
+  }
+
+nocow:
+  dprintf("Segmentation fault on proc %lu\n", this_proc()->pid);
+
+  dprintf("Vaddr: %lx Paddr: %lx PM: %lx Page flags: 0x%lx\n", vaddr, paddr, pm, page & 0xFFF);
+  dprintf("RIP: 0x%lx RSP: 0x%lx CR2: 0x%lx err: %lx\n", r->rip, r->rsp, cr2, r->err_code);
   if (!halt)
     sig_raise(SIGSEGV);
   return halt;
+}
+
+pagemap* vmm_clone(pagemap* pm) {
+  pagemap* clone = vmm_new_pm();
+
+  // Create a new region for the clone.
+
+  for (vma_region* region = pm->vma_head->next; region != pm->vma_head; region = region->next) {
+    // Set page as read only.
+    vmm_map_range(pm, region->vaddr, region->paddr, region->pages, region->flags & ~PTE_WRITABLE);
+
+    // Map the directories with the right flags
+    vmm_map_user_range(clone, region->vaddr, region->paddr, region->pages, region->flags);
+    // Map the page with the right flags
+    vmm_map_range(clone, region->vaddr, region->paddr, region->pages, region->flags & ~PTE_WRITABLE);
+
+    vmm_invlpg_range(region->vaddr, region->pages);
+
+    // Create a new region in clone vma
+    vmm_create_region(clone, region->vaddr, region->paddr, region->pages, region->flags)->ref_count = 0;
+    region->ref_count = 0;
+  }
+
+  return clone;
 }

@@ -22,38 +22,13 @@ void* syscall_table[] = {
   syscall_free,            // 6
   syscall_realloc,         // 7
 
-  syscall_getsz,           // 8
+  syscall_fork,            // 8
+  syscall_getpid,          // 9
 
-  syscall_unhandled,       // 9
-  syscall_unhandled,       // 10
-
-  syscall_open,            // 11
-  syscall_read,            // 12
-  syscall_write,           // 13
-  syscall_close,           // 14
-
-  syscall_getcwd,          // 15
-  syscall_chdir,           // 16
-
-  syscall_opendir,         // 17
-  syscall_readdir,         // 18
-  syscall_closedir,        // 19
-
-  syscall_poll,            // 20
-
-  syscall_sock_new,        // 21
-  syscall_sock_bind,       // 22
-  syscall_sock_connect,    // 23
-  syscall_sock_accept,     // 24
-  syscall_sock_get_ready,  // 25
-  syscall_sock_msg_sender, // 26
-
-  syscall_shmem,           // 27
-  syscall_shmem_connect,   // 28
-  syscall_shmem_get,       // 29
-
-  syscall_spawn,           // 30
-  syscall_get_id,          // 31
+  syscall_open,            // 10
+  syscall_read,            // 11
+  syscall_write,           // 12
+  syscall_close,           // 13
 };
 
 void syscall_handle(registers* r) {
@@ -65,7 +40,9 @@ void syscall_handle(registers* r) {
     args.arg4 = (void*)r->r10;
     args.arg5 = (void*)r->r8;
     args.arg6 = (void*)r->r9;
+    args.r = r;
     u64(*func)(syscall_args) = syscall_table[r->rax];
-    r->rax = func(args);
+    u64 res = func(args);
+    r->rax = res;
   }
 }

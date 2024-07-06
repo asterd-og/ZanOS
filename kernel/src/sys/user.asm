@@ -3,9 +3,9 @@
 [extern syscall_handle]
 
 syscall_entry:
-  swapgs ; swap kernel's gs base with gs base
-  ; kgs = gs; gs = kgs
-  mov [gs:0], rsp ; Save user stack in the stack
+  ; Currently running on user gs, switch to the thread gs
+  swapgs ; switch
+  mov [gs:0], rsp ; Save user stack in gs
   mov rsp, [gs:8] ; Kernel stack
   push 0
   push 0
@@ -47,5 +47,5 @@ syscall_entry:
 
   mov [gs:8], rsp
   mov rsp, [gs:0]
-  swapgs ; swap again, now kernel gs is the kernel gs again
+  swapgs ; swap again, now kernel stack is the kernel gs again
   o64 sysret
